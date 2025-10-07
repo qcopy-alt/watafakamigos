@@ -19,7 +19,7 @@ the root tool for the meta surveillance devices (Quest 3/3s). ROOT ON BOOT
 - Spoof Build Type (For Dogfood & ShellDebug)6
 
 > [!CAUTION]
-> No "developers" involved or mentioned with/in this project are responsible for any damage that may occur during, before or after the process. "Developers" involved includes but is not limited to, all individuals and organizations mentioned in the code/credits section, @veygax and FreeXR.
+> No "developers" involved or mentioned with/in this project are responsible for any damage that may occur during, before or after the runtime and installation of the app. "Developers" involved includes but is not limited to, all individuals and organizations mentioned in the code/credits section, @veygax and FreeXR.
 
 ## installation
 download the apk from releases and sideload
