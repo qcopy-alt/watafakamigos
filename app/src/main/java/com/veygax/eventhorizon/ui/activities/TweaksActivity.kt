@@ -65,6 +65,7 @@ object StatusChecks {
     private const val PREFIX_FOG = "CHECK_FOG:"
     private const val PREFIX_PANEL_SCALE = "CHECK_PANEL_SCALE:"
     private const val PREFIX_INF_PANELS = "CHECK_INF_PANELS:"
+    private const val PREFIX_LOCK_STATE = "CHECK_LOCK_STATE:"
 
     fun getCombinedStatusCommand(): String = """
         # Script States (check if scripts are running)
@@ -78,6 +79,7 @@ object StatusChecks {
         echo "${PREFIX_ROOT_BLOCK}$(mount | grep /system/etc/hosts)"
         echo "${PREFIX_CPU_GOV}$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo 'N/A')"
         echo "${PREFIX_ADB_PORT}$(getprop service.adb.tcp.port 2>/dev/null || echo '-1')"
+        echo "${PREFIX_LOCK_STATE}$(ls -ld /data/data/com.oculus.updater /data/ota /data/ota_package 2>/dev/null | grep -c 'd---------')"
 
         # Oculus Preference States
         echo "${PREFIX_UI_STATE}$(oculuspreferences --getc debug_navigator_state 2>/dev/null || echo 'state: 0')"
@@ -103,14 +105,15 @@ object StatusChecks {
         var isTeleportLimitDisabled: Boolean = false,
         var isNavigatorFogEnabled: Boolean = false,
         var isPanelScalingEnabled: Boolean = false,
-        var isInfinitePanelsEnabled: Boolean = false
+        var isInfinitePanelsEnabled: Boolean = false,
+        var areUpdateFoldersLocked: Boolean = false
     )
 
     // Function to run the check and return the parsed result
     suspend fun loadAllToggleStates(): TweakStates = withContext(Dispatchers.IO) {
         val states = TweakStates()
         try {
-            val rawOutput = RootUtils.runAsRoot(getCombinedStatusCommand())
+            val rawOutput = RootUtils.runAsRoot(getCombinedStatusCommand(), useMountMaster = true)
 
             rawOutput.lineSequence().forEach { line ->
                 when {
@@ -138,6 +141,10 @@ object StatusChecks {
                     }
                     line.startsWith(PREFIX_ADB_PORT) -> {
                         states.isWirelessAdbEnabled = line.substringAfter(PREFIX_ADB_PORT).trim() == "5555"
+                    }
+                    line.startsWith(PREFIX_LOCK_STATE) -> {
+                        val lockCount = line.substringAfter(PREFIX_LOCK_STATE).trim().toIntOrNull() ?: 0
+                        states.areUpdateFoldersLocked = lockCount == 3
                     }
                     line.startsWith(PREFIX_UI_STATE) -> {
                         states.uiSwitchState = if (line.contains(": 1")) 1 else 0
@@ -314,6 +321,38 @@ class TweaksActivity : ComponentActivity() {
         return false
     }
 
+    // === Lock/Unlock Update Folder Functions ===
+    private fun isPathLocked(rootOutput: String, path: String, lockSignature: String): Boolean {
+        val lines = rootOutput.split('\n')
+        val relevantLine = lines.firstOrNull { it.contains(path) }
+
+        return relevantLine?.trimStart()?.startsWith(lockSignature) == true
+    }
+
+    suspend fun applyLockToUpdateFolders(): Boolean {
+        val lockCommand = """
+            mkdir -p /data/data/com.oculus.updater /data/ota /data/ota_package
+            chmod 000 /data/data/com.oculus.updater /data/ota /data/ota_package
+            echo "EH_LOCK_SUCCESS" 
+        """
+
+        val output = RootUtils.runAsRoot(
+            command = lockCommand,
+            useMountMaster = true
+        )
+
+        return output.contains("EH_LOCK_SUCCESS")
+    }
+
+    suspend fun restoreUpdateFolders(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            RootUtils.runAsRoot("chmod 700 /data/data/com.oculus.updater; chmod 771 /data/ota; chmod 770 /data/ota_package", useMountMaster = true)
+            return@withContext true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val isRooted = intent.getBooleanExtra("is_rooted", false)
@@ -420,6 +459,11 @@ fun TweaksScreen(
     var proxSensorOnBoot by rememberSaveable { mutableStateOf(getInitialState("prox_sensor_on_boot")) }
     var isProxSensorDisabled by remember { mutableStateOf(initialProxSensorDisabledState) } // Proxy sensor disabled is the state that matters
 
+    // --- Lock Update Folders
+    val initialLockUpdateFolders = sharedPrefs.getBoolean("lock_update_folders", false)
+    var lockUpdateFoldersOnBoot by rememberSaveable { mutableStateOf(initialLockUpdateFolders) }
+    var isLockUpdateFoldersActive by remember { mutableStateOf(sharedPrefs.getBoolean("lock_update_folders_is_locked", false)) }
+
     // System UI
     val initialUiSwitchState = sharedPrefs.getInt("ui_switch_state", 0)
     var uiSwitchState by rememberSaveable { mutableStateOf(initialUiSwitchState) }
@@ -485,6 +529,7 @@ fun TweaksScreen(
                             isRootBlockerManuallyEnabled = states.isRootBlockerManuallyEnabled
                             isCpuPerfMode = states.isCpuPerfMode
                             isWirelessAdbEnabled = states.isWirelessAdbEnabled
+                            isLockUpdateFoldersActive = states.areUpdateFoldersLocked
                             uiSwitchState = states.uiSwitchState
                             isVoidTransitionEnabled = states.isVoidTransitionEnabled
                             isTeleportLimitDisabled = states.isTeleportLimitDisabled
@@ -553,7 +598,8 @@ fun TweaksScreen(
                 isRootBlockerManuallyEnabled = states.isRootBlockerManuallyEnabled // Final correction
                 isCpuPerfMode = states.isCpuPerfMode
                 isWirelessAdbEnabled = states.isWirelessAdbEnabled
-                
+                isLockUpdateFoldersActive = states.areUpdateFoldersLocked
+
                 // Also update the oculuspreferences states
                 uiSwitchState = states.uiSwitchState
                 isVoidTransitionEnabled = states.isVoidTransitionEnabled
@@ -1003,6 +1049,40 @@ fun TweaksScreen(
                                                     if (isEnabled) "Proximity Sensor Auto-Wake Disabled"
                                                     else "Proximity Sensor Auto-Wake Restored"
                                                 )
+                                            }
+                                        }
+                                    },
+                                    enabled = isRooted
+                                )
+                            }
+                        }
+                    }
+                    TweakCard(
+                        title = "Disable Updater folder access",
+                        description = "Prevents the Updater from accessing folders it needs to run"
+                    ) {
+                        Column(modifier = Modifier.width(IntrinsicSize.Max)) {
+                            Spacer(Modifier.height(8.dp))
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                Text("Lock Status", style = MaterialTheme.typography.bodyMedium)
+                                Switch(
+                                    checked = isLockUpdateFoldersActive,
+                                    onCheckedChange = { isEnabled ->
+                                        coroutineScope.launch {
+                                            if (isEnabled) {
+                                                val success = activity.applyLockToUpdateFolders() 
+                                                withContext(Dispatchers.Main) {
+                                                    isLockUpdateFoldersActive = success
+                                                    sharedPrefs.edit().putBoolean("lock_update_folders_is_locked", success).apply()
+                                                    snackbarHostState.showSnackbar(if (success) "Disabled Updater access" else "Failed to disable access")
+                                                }
+                                            } else {
+                                                val success = activity.restoreUpdateFolders()
+                                                withContext(Dispatchers.Main) {
+                                                    isLockUpdateFoldersActive = !success
+                                                    sharedPrefs.edit().putBoolean("lock_update_folders_is_locked", !success).apply()
+                                                    snackbarHostState.showSnackbar(if (success) "Enabled Updater access" else "Failed to enable access")
+                                                }
                                             }
                                         }
                                     },
