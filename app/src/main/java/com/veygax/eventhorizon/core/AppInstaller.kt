@@ -1,6 +1,7 @@
 package com.veygax.eventhorizon.core
 
 import android.content.Context
+import android.net.Uri
 import com.veygax.eventhorizon.utils.RootUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -115,6 +116,48 @@ object AppInstaller {
             } catch (e: Exception) {
                 onStatusUpdate("An error occurred: ${e.message}")
                 e.printStackTrace()
+                return@withContext false
+            }
+        }
+    }
+    
+    suspend fun installFromUri(
+        context: Context,
+        apkUri: Uri,
+        appName: String,
+        onStatusUpdate: (String) -> Unit
+    ): Boolean {
+        return withContext(Dispatchers.IO) {
+            var apkFile: File? = null
+            try {
+                onStatusUpdate("Preparing file for installation...")
+                apkFile = File(context.cacheDir, "${appName}_temp.apk")
+                context.contentResolver.openInputStream(apkUri)?.use { input ->
+                    FileOutputStream(apkFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                if (apkFile == null || !apkFile.exists()) {
+                    onStatusUpdate("Error: Could not read selected file.")
+                    return@withContext false
+                }
+
+                onStatusUpdate("Installing...")
+                val result = RootUtils.runAsRoot("pm install -r \"${apkFile.absolutePath}\"")
+                apkFile.delete()
+
+                if (result.contains("Success")) {
+                    onStatusUpdate("$appName installed successfully!")
+                    return@withContext true
+                } else {
+                    onStatusUpdate("Installation failed. Output: ${result.take(500)}...")
+                    return@withContext false
+                }
+            } catch (e: Exception) {
+                onStatusUpdate("An error occurred: ${e.message}")
+                e.printStackTrace()
+                apkFile?.delete()
                 return@withContext false
             }
         }

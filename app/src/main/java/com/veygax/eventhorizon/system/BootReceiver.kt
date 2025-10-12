@@ -132,6 +132,7 @@ class BootReceiver : BroadcastReceiver() {
                 }
             }
 
+            // --- Domain Blocker Boot Logic ---
             if (isRootBlockerEnabledOnBoot) {
                 Log.i("BootReceiver", "Root blocker enabled. Starting kill switch...")
 
@@ -193,12 +194,15 @@ class BootReceiver : BroadcastReceiver() {
                 }
             }
 
+            // --- USB Interceptor Boot Logic ---
             if (usbInterceptorOnBoot) {
                 val serviceIntent = Intent(context, TweakService::class.java).apply {
                     action = TweakService.ACTION_START_USB_INTERCEPTOR
                 }
                 context.startService(serviceIntent)
             }
+
+            // --- Proxy Sensor Boot Logic ---
             if (proxSensorDisabled) {
                 scope.launch {
                     RootUtils.runAsRoot("am broadcast -a com.oculus.vrpowermanager.prox_close")
@@ -209,6 +213,7 @@ class BootReceiver : BroadcastReceiver() {
                 }
             }
 
+            // --- OTA Folder Lock Boot Logic ---
             if (isLockUpdateFoldersActive) {
                 scope.launch {
                     if (RootUtils.isRootAvailable()) {
@@ -216,6 +221,15 @@ class BootReceiver : BroadcastReceiver() {
                         RootUtils.runAsRoot("chmod 000 /data/data/com.oculus.updater /data/ota /data/ota_package", useMountMaster = true)
                         sharedPrefs.edit().putBoolean("lock_update_folders_is_locked", true).apply()
                     }
+                }
+            }
+            
+            // --- Start App on Boot Logic ---
+            val Startapp = sharedPrefs.getString("start_app_on_boot", null)
+            if (!Startapp.isNullOrBlank()) {
+                scope.launch {
+                    val launchCommand = "monkey -p $Startapp -c android.intent.category.LAUNCHER 1"
+                    RootUtils.runAsRoot(launchCommand)
                 }
             }
         }

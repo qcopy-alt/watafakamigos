@@ -7,36 +7,50 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.veygax.eventhorizon.core.AppInstaller
 import com.veygax.eventhorizon.utils.RootUtils
 import kotlinx.coroutines.launch
+import android.util.Log
+import android.graphics.drawable.Drawable
+import android.widget.ImageView
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.Image
 
 // --- Data class to organize app information ---
 data class AppInfo(
     val title: String,
     val description: String,
     val packageName: String,
-    val installAction: suspend (Context, (String) -> Unit) -> Unit,
+    val installAction: suspend (Context, (String) -> Unit, Uri?) -> Unit,
     val type: AppInstallType = AppInstallType.AUTOMATIC
 )
 
 enum class AppInstallType {
     AUTOMATIC,
-    MANUAL_LINK
+    MANUAL_LINK,
+    FILE_PICKER
 }
 
 class AppsActivity : ComponentActivity() {
@@ -67,37 +81,60 @@ fun AppsScreen() {
     val context = LocalContext.current
     val activity = context as? Activity
     val sharedPrefs = remember { context.getSharedPreferences("eventhorizon_prefs", Context.MODE_PRIVATE) }
+    var selectedAppToInstall: AppInfo? by remember { mutableStateOf(null) }
+    var showSideloadedAppDialog by remember { mutableStateOf(false) }
+    var appToLaunchOnBoot by rememberSaveable {
+        mutableStateOf(sharedPrefs.getString("start_app_on_boot", ""))
+    }
+    val saveAppToLaunchOnBoot: (String?) -> Unit = { packageName ->
+        appToLaunchOnBoot = packageName
+        sharedPrefs.edit().putString("start_app_on_boot", packageName).apply()
+        showSideloadedAppDialog = false
+    }
+    val localApkInstallAction: suspend (Context, (String) -> Unit, Uri?) -> Unit = { ctx, onStatus, uri ->
+        uri?.let { fileUri ->
+            AppInstaller.installFromUri(ctx, fileUri, "Local APK", onStatus)
+        } ?: onStatus("Error: File not found")
+    }
+    val defaultInstallAction: suspend (Context, (String) -> Unit, Uri?) -> Unit = { ctx, onStatus, _ ->}
 
     // --- List of apps to be displayed ---
     val appList = listOf(
         AppInfo(
+            title = "Install APK",
+            description = "Use the Android file manager to select and install an APK file from your device",
+            packageName = "com.veygax.eventhorizon.localapkinstaller",
+            type = AppInstallType.FILE_PICKER,
+            installAction = localApkInstallAction
+        ),
+        AppInfo(
             title = "Dock Editor",
-            description = "A simple tool for the Quest 3/3s that allows you to edit the pinned applications on the dock.",
+            description = "A simple tool for the Quest 3/3s that allows you to edit the pinned applications on the dock",
             packageName = "com.lumi.dockeditor",
-            installAction = { ctx, onStatus ->
+            installAction = { ctx, onStatus, _ ->
                 AppInstaller.downloadAndInstall(ctx, "Lumince", "DockEditor", onStatus)
             }
         ),
         AppInfo(
             title = "Shizuku",
-            description = "Lets other apps use system-level features by giving them elevated permissions.",
+            description = "Lets other apps use system-level features by giving them elevated permissions",
             packageName = "moe.shizuku.privileged.api",
-            installAction = { ctx, onStatus ->
+            installAction = { ctx, onStatus, _ ->
                 AppInstaller.downloadAndInstall(ctx, "RikkaApps", "Shizuku", onStatus)
             }
         ),
         AppInfo(
             title = "MiXplorer",
-            description = "Root File Explorer.",
+            description = "Root File Explorer",
             packageName = "com.mixplorer",
             type = AppInstallType.AUTOMATIC,
-            installAction = { ctx, onStatus ->
+            installAction = { ctx, onStatus, _ ->
                 val directUrl = "https://mixplorer.com/beta/MiXplorer_v6.68.4-Beta_B24112312-arm64.apk"
                 AppInstaller.downloadAndInstallFromUrl(ctx, directUrl, "MiXplorer", onStatus)
             }
         )
     )
-    
+
     val appStates = remember {
         mutableStateMapOf<String, Pair<String, Boolean>>().apply {
             appList.forEach { app ->
@@ -105,7 +142,27 @@ fun AppsScreen() {
             }
         }
     }
-    
+
+    // --- Activity Result Launcher for File Picker ---
+    val apkPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { fileUri ->
+            selectedAppToInstall?.let { appInfo ->
+                val packageName = appInfo.packageName
+
+                appStates[packageName] = Pair("Starting Installation...", true)
+                coroutineScope.launch {
+                    appInfo.installAction(context, { newStatus ->
+                        appStates[packageName] = Pair(newStatus, true)
+                    }, fileUri)
+                    appStates[packageName] = Pair(appStates[packageName]?.first ?: "Done", false)
+                }
+            }
+        }
+        selectedAppToInstall = null // Reset state
+    }
+
     // State for Dogfood Hub feature
     var showRestartDialog by remember { mutableStateOf(false) }
     var restartDialogContent by remember { mutableStateOf<Pair<String, () -> Unit>>(Pair("", {})) }
@@ -119,10 +176,11 @@ fun AppsScreen() {
         // Check for Dogfood Hub setup step 2
         if (sharedPrefs.getBoolean("dogfood_pending_step2", false)) {
             sharedPrefs.edit().remove("dogfood_pending_step2").apply()
-            RootUtils.runAsRoot(DogfoodCommands.ENABLE_DOGFOOD_STEP_2)
+            RootUtils.runAsRoot(LaunchCommands.ENABLE_DOGFOOD_STEP_2)
         }
     }
 
+    // --- Dialogs ---
     if (showRestartDialog) {
         AlertDialog(
             onDismissRequest = { showRestartDialog = false },
@@ -130,6 +188,13 @@ fun AppsScreen() {
             text = { Text(restartDialogContent.first) },
             confirmButton = { Button(onClick = { restartDialogContent.second(); showRestartDialog = false }) { Text("Confirm") } },
             dismissButton = { Button(onClick = { showRestartDialog = false }) { Text("Cancel") } }
+        )
+    }
+
+    if (showSideloadedAppDialog) {
+        LaunchStartAppOnBootDialog(
+            onDismiss = { showSideloadedAppDialog = false },
+            onAppSelected = saveAppToLaunchOnBoot
         )
     }
 
@@ -152,71 +217,111 @@ fun AppsScreen() {
         LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                            Text(text = "Dogfood Hub", style = MaterialTheme.typography.titleMedium)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "Enables Dogfood Hub", style = MaterialTheme.typography.bodyMedium)
-                        }
+                AppSection(title = "Launch apps") {
+                    // --- Dogfood Hub Card ---
+                    AppCard("Dogfood Hub", "Enables the hidden Dogfood Hub for experimental features") {
                         Column(horizontalAlignment = Alignment.End) {
                             Switch(checked = isDogfoodEnabled, onCheckedChange = { isEnabled ->
                                 restartDialogContent = if (isEnabled) {
                                     Pair("This will restart your device's interface. After it reloads, please open this app again to complete the second step automatically.") {
                                         coroutineScope.launch {
                                             sharedPrefs.edit().putBoolean("dogfood_pending_step2", true).apply()
-                                            RootUtils.runAsRoot(DogfoodCommands.ENABLE_DOGFOOD_STEP_1)
+                                            RootUtils.runAsRoot(LaunchCommands.ENABLE_DOGFOOD_STEP_1)
                                         }
                                     }
                                 } else {
-                                    Pair("This will disable the Dogfood Hub and restart your device's interface.") {
-                                        coroutineScope.launch { RootUtils.runAsRoot(DogfoodCommands.DISABLE_DOGFOOD_HUB) }
+                                    Pair("This will disable the Dogfood Hub and restart your device's interface") {
+                                        coroutineScope.launch { RootUtils.runAsRoot(LaunchCommands.DISABLE_DOGFOOD_HUB) }
                                     }
                                 }
                                 showRestartDialog = true
                             })
                             Spacer(Modifier.height(8.dp))
                             Button(
-                                onClick = { coroutineScope.launch { RootUtils.runAsRoot(DogfoodCommands.LAUNCH_DOGFOOD_HUB) } },
+                                onClick = { coroutineScope.launch { RootUtils.runAsRoot(LaunchCommands.LAUNCH_DOGFOOD_HUB) } },
                                 enabled = isDogfoodEnabled
                             ) { Text("Launch") }
                         }
                     }
+                    AppCard("Android Settings", "Launches the Android settings app") {
+                        Button(onClick = {
+                            coroutineScope.launch { RootUtils.runAsRoot(LaunchCommands.LAUNCH_ANDROID_SETTINGS) }
+                        }) { Text("Launch") }
+                    }
+                    AppCard("Android File Manager", "Launches the Android file manager") {
+                        Button(onClick = {
+                            coroutineScope.launch { RootUtils.runAsRoot(LaunchCommands.LAUNCH_FILE_MANAGER) }
+                        }) { Text("Launch") }
+                    }
+
+                    // NEW App Card for Start App on Boot
+                    AppCard("Start App on Boot",
+                        "Select an app to automatically launch on boot\nCurrent: ${if (appToLaunchOnBoot.isNullOrBlank()) "None" else appToLaunchOnBoot}") {
+                        Row {
+                            val isAppSelected = !appToLaunchOnBoot.isNullOrBlank()
+                            val buttonText = if (isAppSelected) "Clear" else "Select"
+
+                            Button(
+                                onClick = {
+                                    if (isAppSelected) {
+                                        saveAppToLaunchOnBoot(null)
+                                    } else {
+                                        showSideloadedAppDialog = true
+                                    }
+                                },
+                            ) {
+                                Text(buttonText)
+                            }
+                        }
+                    }
                 }
             }
-            items(appList.size) { index ->
-                val app = appList[index]
-                val status = appStates[app.packageName]?.first ?: "Ready"
-                val isInstalling = appStates[app.packageName]?.second ?: false
-                
-                AppCard(
-                    title = app.title,
-                    description = app.description,
-                    status = status
-                ) {
-                    val buttonText = when {
-                        isInstalling -> "Installing..."
-                        app.type == AppInstallType.MANUAL_LINK -> "Open Link"
-                        else -> "Install"
-                    }
-                    Button(
-                        onClick = {
-                            appStates[app.packageName] = Pair("Starting...", true)
-                            coroutineScope.launch {
-                                app.installAction(context) { newStatus ->
-                                    appStates[app.packageName] = Pair(newStatus, true)
+
+            item {
+                AppSection(title = "Install Apps") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        appList.forEach { app ->
+                            val status = appStates[app.packageName]?.first ?: "Ready"
+                            val isInstalling = appStates[app.packageName]?.second ?: false
+                            AppCard(
+                                title = app.title,
+                                description = app.description,
+                                status = status
+                            ) {
+                                val buttonText = when {
+                                    isInstalling -> "Processing..."
+                                    app.type == AppInstallType.MANUAL_LINK -> "Open Link"
+                                    app.type == AppInstallType.FILE_PICKER -> "Select" // New button text
+                                    else -> "Install"
                                 }
-                                appStates[app.packageName] = Pair(appStates[app.packageName]?.first ?: "Done", false)
+                                Button(
+                                    onClick = {
+                                        if (app.type == AppInstallType.FILE_PICKER) {
+                                            selectedAppToInstall = app
+                                            // The built-in Android file manager intent for picking files
+                                            apkPickerLauncher.launch("*/*") // MIME type for all files, hoping Android suggests file manager
+                                        } else {
+                                            // Existing installation logic
+                                            appStates[app.packageName] = Pair("Starting...", true)
+                                            coroutineScope.launch {
+                                                app.installAction(context, { newStatus ->
+                                                    appStates[app.packageName] = Pair(newStatus, true)
+                                                }, null) // Pass null for Uri
+                                                appStates[app.packageName] = Pair(appStates[app.packageName]?.first ?: "Done", false)
+                                            }
+                                        }
+                                    },
+                                    enabled = !isInstalling
+                                ) {
+                                    Text(buttonText)
+                                }
                             }
-                        },
-                        enabled = !isInstalling
-                    ) {
-                        Text(buttonText)
+                        }
                     }
                 }
             }
@@ -224,6 +329,198 @@ fun AppsScreen() {
     }
 }
 
+@Composable
+fun DrawableImage(drawable: Drawable, contentDescription: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    AndroidView(
+        factory = {
+            ImageView(it).apply {
+                setImageDrawable(drawable)
+            }
+        },
+        update = {
+            it.setImageDrawable(drawable)
+        },
+        modifier = modifier
+    )
+}
+
+@Composable
+fun LaunchStartAppOnBootDialog(
+    onDismiss: () -> Unit,
+    onAppSelected: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    // UPDATED: List now holds Drawable for the icon, plus name and package
+    var appList by remember { mutableStateOf<List<Triple<Drawable, String, String>>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val exclusionList = listOf("com.oculus", "com.meta", "com.google", "com.facebook")
+
+    LaunchedEffect(Unit) {
+        isLoading = true
+        errorMessage = null
+        try {
+            // 1. Use RootUtils to get a list of third-party package names (-3 flag)
+            // This ensures we see all non-system apps regardless of visibility restrictions.
+            val command = "pm list packages -3"
+            val output = RootUtils.runAsRoot(command)
+            val pm = context.packageManager
+
+            // Define a default icon for fallbacks
+            val defaultIcon = context.getDrawable(android.R.drawable.sym_def_app_icon)!!
+
+            // Check if RootUtils returned an error (e.g., "Execution failed")
+            if (output.contains("Execution failed") || output.contains("ERROR:")) {
+                errorMessage = "Failed to run command with root. Falling back to non-root method."
+                Log.e("SideloadedAppDialog", "Root command failed: $output")
+
+                // FALLBACK: Non-root method (UPDATED to fetch icon)
+                val installedApps = pm.getInstalledApplications(0)
+                appList = installedApps.filter { appInfo ->
+                    (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0
+                }.map { appInfo ->
+                    // FETCH ICON HERE
+                    Triple(pm.getApplicationIcon(appInfo), pm.getApplicationLabel(appInfo).toString(), appInfo.packageName)
+                }.sortedBy { it.second }
+
+            } else {
+                // 2. Parse the output: "package:com.example.app"
+                val packageNames = output.lines()
+                    .filter { it.startsWith("package:") }
+                    .map { it.substringAfter("package:").trim() }
+                    .filter { packageName -> !exclusionList.any { packageName.startsWith(it) } }
+
+                // 3. Use standard PackageManager to get human-readable names and icons (UPDATED)
+                appList = packageNames.mapNotNull { packageName ->
+                    try {
+                        val appInfo = pm.getApplicationInfo(packageName, 0)
+                        // FETCH ICON HERE
+                        Triple(pm.getApplicationIcon(appInfo), pm.getApplicationLabel(appInfo).toString(), packageName)
+                    } catch (e: Exception) {
+                        // Use default icon if fetching fails
+                        Triple(defaultIcon, packageName, packageName)
+                    }
+                }.sortedBy { it.second }
+            }
+        } catch (e: Exception) {
+            errorMessage = "An unexpected error occurred: ${e.message}"
+            Log.e("SideloadedAppDialog", "Exception during app fetching: ${e.message}")
+        } finally {
+            isLoading = false
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select App to Launch on Boot") },
+        text = {
+            Column(modifier = Modifier.heightIn(max = 400.dp)) {
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (!errorMessage.isNullOrBlank()) {
+                    Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (appList.isEmpty()) {
+                         Text("App list could not be loaded.")
+                    }
+                } else if (appList.isEmpty()) {
+                    Text("No user-installed apps found.")
+                } else {
+                    LazyColumn {
+                        // UPDATED: Destructure the Triple to get icon, name, and package
+                        items(appList) { (icon, name, packageName) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onAppSelected(packageName) }
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // NEW: Use DrawableImage composable for the icon
+                                DrawableImage(
+                                    drawable = icon,
+                                    contentDescription = name,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                // END NEW
+                                Column {
+                                    Text(name, style = MaterialTheme.typography.titleMedium)
+                                    Text(packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            Divider()
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun AppSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var isExpanded by rememberSaveable { mutableStateOf(true) }
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = if (isExpanded) "Collapse" else "Expand"
+            )
+        }
+        AnimatedVisibility(visible = isExpanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                content()
+            }
+        }
+    }
+}
+
+// AppCard for simpler use cases (like launch buttons)
+@Composable
+fun AppCard(title: String, description: String, content: @Composable () -> Unit) {
+    Card(modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp) 
+            ) {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = description, style = MaterialTheme.typography.bodyMedium)
+            }
+            content()
+        }
+    }
+}
+
+// AppCard for installation status
 @Composable
 fun AppCard(title: String, description: String, status: String, content: @Composable () -> Unit) {
     Card(modifier = Modifier
@@ -252,11 +549,15 @@ fun AppCard(title: String, description: String, status: String, content: @Compos
     }
 }
 
-object DogfoodCommands {
+object LaunchCommands {
     const val ENABLE_DOGFOOD_STEP_1 = "magisk resetprop ro.build.type userdebug\nstop\nstart"
     const val ENABLE_DOGFOOD_STEP_2 = "am broadcast -a oculus.intent.action.DC_OVERRIDE --esa config_param_value oculus_systemshell:oculus_is_trusted_user:true\nstop\nstart"
     const val DISABLE_DOGFOOD_HUB = "magisk resetprop --delete ro.build.type\nstop\nstart"
     const val LAUNCH_DOGFOOD_HUB = "am start com.oculus.vrshell/com.oculus.panelapp.dogfood.DogfoodMainActivity"
+
+    // App Launching
+    const val LAUNCH_ANDROID_SETTINGS = "am start -n com.android.settings/.Settings"
+    const val LAUNCH_FILE_MANAGER = "am start -n com.android.documentsui/.files.FilesActivity"
 }
 
 @Preview(showBackground = true, heightDp = 600)
