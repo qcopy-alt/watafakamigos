@@ -1039,17 +1039,6 @@ fun TweaksScreen(
                             enabled = isRooted
                         )
                     }
-                    TweakCard("System Hang Fix", "Turns Wi-Fi off and on during boot to prevent the system from hanging in certain conditions") {
-                        Switch(
-                            checked = cycleWifiOnBoot,
-                            onCheckedChange = { isEnabled ->
-                                cycleWifiOnBoot = isEnabled
-                                sharedPrefs.edit().putBoolean("cycle_wifi_on_boot", isEnabled).apply()
-                                coroutineScope.launch { snackbarHostState.showSnackbar(if (isEnabled) "Wi-Fi Cycle on Boot Enabled" else "Wi-Fi Cycle on Boot Disabled") }
-                            },
-                            enabled = isRooted
-                        )
-                    }
                     TweakCard(
                         title = "USB Notification Interceptor",
                         description = "Listens for the Oculus MTP notification and turns on MTP mode"
@@ -1068,6 +1057,17 @@ fun TweaksScreen(
                                         snackbarHostState.showSnackbar("USB Interceptor Disabled")
                                     }
                                 }
+                            },
+                            enabled = isRooted
+                        )
+                    }
+                    TweakCard("System Hang Fix", "Turns Wi-Fi off and on during boot to prevent the system from hanging in certain conditions") {
+                        Switch(
+                            checked = cycleWifiOnBoot,
+                            onCheckedChange = { isEnabled ->
+                                cycleWifiOnBoot = isEnabled
+                                sharedPrefs.edit().putBoolean("cycle_wifi_on_boot", isEnabled).apply()
+                                coroutineScope.launch { snackbarHostState.showSnackbar(if (isEnabled) "Wi-Fi Cycle on Boot Enabled" else "Wi-Fi Cycle on Boot Disabled") }
                             },
                             enabled = isRooted
                         )
