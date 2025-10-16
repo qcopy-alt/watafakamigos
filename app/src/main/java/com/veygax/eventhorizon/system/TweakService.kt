@@ -223,7 +223,7 @@ class TweakService : Service() {
         // Always write the script to ensure it's present and up-to-date
             rgbScriptFile.writeText(TweakCommands.RGB_SCRIPT)
             RootUtils.runAsRoot("chmod +x ${rgbScriptFile.absolutePath}")
-        RootUtils.runAsRoot("${rgbScriptFile.absolutePath} &")
+        RootUtils.runAsRoot("nohup ${rgbScriptFile.absolutePath} > /dev/null 2>&1 &")
         isRgbRunning = true
         isCustomLedRunning = false
         isPowerLedRunning = false
@@ -251,7 +251,7 @@ class TweakService : Service() {
         """.trimIndent()
         customLedScriptFile.writeText(customColorScript)
         RootUtils.runAsRoot("chmod +x ${customLedScriptFile.absolutePath}")
-        RootUtils.runAsRoot("${customLedScriptFile.absolutePath} &")
+        RootUtils.runAsRoot("nohup ${customLedScriptFile.absolutePath} > /dev/null 2>&1 &")
         isCustomLedRunning = true
         isRgbRunning = false
         isPowerLedRunning = false
@@ -267,7 +267,7 @@ class TweakService : Service() {
         stopAnyLed()
         powerLedScriptFile.writeText(TweakCommands.POWER_LED_SCRIPT) // This line creates the file
         RootUtils.runAsRoot("chmod +x ${powerLedScriptFile.absolutePath}")
-        RootUtils.runAsRoot("${powerLedScriptFile.absolutePath} &")
+        RootUtils.runAsRoot("nohup ${powerLedScriptFile.absolutePath} > /dev/null 2>&1 &")
         isPowerLedRunning = true
         isRgbRunning = false
         isCustomLedRunning = false
@@ -295,7 +295,7 @@ class TweakService : Service() {
         val scriptContent = CpuUtils.getMinFreqScript(CpuUtils.DEFAULT_LITTLE_FREQ, CpuUtils.DEFAULT_BIG_FREQ)
         minFreqScriptFile.writeText(scriptContent)
         RootUtils.runAsRoot("chmod +x ${minFreqScriptFile.absolutePath}")
-        RootUtils.runAsRoot("${minFreqScriptFile.absolutePath} &")
+        RootUtils.runAsRoot("nohup ${minFreqScriptFile.absolutePath} > /dev/null 2>&1 &")
         isMinFreqRunning = true
     }
 
