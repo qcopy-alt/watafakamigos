@@ -7,6 +7,7 @@ import com.scottyab.rootbeer.RootBeer
 import com.veygax.eventhorizon.system.DnsBlockerService
 import com.veygax.eventhorizon.ui.activities.MainActivity
 import com.veygax.eventhorizon.utils.CpuUtils
+import com.veygax.eventhorizon.utils.GpuUtils
 import com.veygax.eventhorizon.utils.RootUtils
 import com.veygax.eventhorizon.ui.activities.TweakCommands
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +36,8 @@ class BootReceiver : BroadcastReceiver() {
             val isLockUpdateFoldersActive = sharedPrefs.getBoolean("lock_update_folders_is_locked", false)
             val passthroughFixOnBoot = sharedPrefs.getBoolean("passthrough_fix_on_boot", false)
             val telemetryDisabledOnBoot = sharedPrefs.getBoolean(TweakCommands.TELEMETRY_TOGGLE_KEY, false)
+            val gpuMinFreqOnBoot = sharedPrefs.getBoolean("gpu_min_freq_on_boot", false)
+            val gpuMaxFreqOnBoot = sharedPrefs.getBoolean("gpu_max_freq_on_boot", false)
             val scope = CoroutineScope(Dispatchers.IO)
 
             // --- Activity Boot Logic ---
@@ -100,12 +103,29 @@ class BootReceiver : BroadcastReceiver() {
                 context.startService(serviceIntent)
             }
 
-            // --- Reset LED running states if NOT set to run on boot ---
+            // --- GPU Min Lock Boot Logic (Using TweakService) ---
+            if (gpuMinFreqOnBoot) {
+                val serviceIntent = Intent(context, TweakService::class.java).apply {
+                    action = TweakService.ACTION_START_GPU_MIN_FREQ
+                }
+                context.startService(serviceIntent)
+            }
+
+            // --- GPU Max Lock Boot Logic (Using TweakService) ---
+            if (gpuMaxFreqOnBoot) {
+                val serviceIntent = Intent(context, TweakService::class.java).apply {
+                    action = TweakService.ACTION_START_GPU_MAX_FREQ
+                }
+                context.startService(serviceIntent)
+            }
+
             with (sharedPrefs.edit()) {
                 if (!customLedOnBoot) putBoolean("custom_led_is_running", false)
                 if (!rainbowLedOnBoot) putBoolean("rgb_led_is_running", false)
                 if (!powerLedOnBoot) putBoolean("power_led_is_running", false)
                 if (!minFreqOnBoot) putBoolean("min_freq_is_running", false)
+                if (!gpuMinFreqOnBoot) putBoolean("gpu_min_freq_is_running", false)
+                if (!gpuMaxFreqOnBoot) putBoolean("gpu_max_freq_is_running", false)
                 apply()
             }
 

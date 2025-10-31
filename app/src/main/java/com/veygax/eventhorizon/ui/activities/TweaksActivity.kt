@@ -43,6 +43,8 @@ import com.veygax.eventhorizon.system.DnsBlockerService
 import com.veygax.eventhorizon.system.TweakService
 import com.veygax.eventhorizon.utils.CpuMonitorInfo
 import com.veygax.eventhorizon.utils.CpuUtils
+import com.veygax.eventhorizon.utils.GpuMonitorInfo
+import com.veygax.eventhorizon.utils.GpuUtils
 import com.veygax.eventhorizon.utils.RootUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -56,6 +58,8 @@ object StatusChecks {
     private const val PREFIX_CUST_LED = "CHECK_CUST_LED:"
     private const val PREFIX_POWER_LED = "CHECK_POWER_LED:"
     private const val PREFIX_CPU_LOCK = "CHECK_CPU_LOCK:"
+    private const val PREFIX_GPU_LOCK = "CHECK_GPU_LOCK:"
+    private const val PREFIX_GPU_MAX_LOCK = "CHECK_GPU_MAX_LOCK:"
     private const val PREFIX_INTERCEPT = "CHECK_INTERCEPT:"
     private const val PREFIX_CPU_GOV = "CHECK_CPU_GOV:"
     private const val PREFIX_ADB_PORT = "CHECK_ADB_PORT:"
@@ -74,6 +78,8 @@ object StatusChecks {
         echo "${PREFIX_CUST_LED}$(ps -ef | grep custom_led.sh | grep -v grep)"
         echo "${PREFIX_POWER_LED}$(ps -ef | grep power_led.sh | grep -v grep)"
         echo "${PREFIX_CPU_LOCK}$(ps -ef | grep ${CpuUtils.SCRIPT_NAME} | grep -v grep)"
+        echo "${PREFIX_GPU_LOCK}$(ps -ef | grep ${GpuUtils.GPU_MIN_FREQ_SCRIPT_NAME} | grep -v grep)"
+        echo "${PREFIX_GPU_MAX_LOCK}$(ps -ef | grep ${GpuUtils.GPU_MAX_FREQ_SCRIPT_NAME} | grep -v grep)"
         echo "${PREFIX_INTERCEPT}$(ps -ef | grep interceptor.sh | grep -v grep)"
 
         # System/Root States
@@ -97,6 +103,8 @@ object StatusChecks {
         var isCustomLedActive: Boolean = false,
         var isPowerLedActive: Boolean = false,
         var isMinFreqExecuting: Boolean = false,
+        var isGpuMinFreqExecuting: Boolean = false,
+        var isGpuMaxFreqExecuting: Boolean = false,
         var isInterceptorEnabled: Boolean = false,
         var isRootBlockerManuallyEnabled: Boolean = false,
         var isCpuPerfMode: Boolean = false,
@@ -130,6 +138,12 @@ object StatusChecks {
                     }
                     line.startsWith(PREFIX_CPU_LOCK) -> {
                         states.isMinFreqExecuting = line.substringAfter(PREFIX_CPU_LOCK).trim().isNotEmpty()
+                    }
+                    line.startsWith(PREFIX_GPU_LOCK) -> {
+                        states.isGpuMinFreqExecuting = line.substringAfter(PREFIX_GPU_LOCK).trim().isNotEmpty()
+                    }
+                    line.startsWith(PREFIX_GPU_MAX_LOCK) -> {
+                        states.isGpuMaxFreqExecuting = line.substringAfter(PREFIX_GPU_MAX_LOCK).trim().isNotEmpty()
                     }
                     line.startsWith(PREFIX_INTERCEPT) -> {
                         states.isInterceptorEnabled = line.substringAfter(PREFIX_INTERCEPT).trim().isNotEmpty()
@@ -451,6 +465,20 @@ fun TweaksScreen(
     var isMinFreqExecuting by remember { mutableStateOf(initialMinFreqIsRunning) }
     var isCpuPerfMode by remember { mutableStateOf(false) } // Must wait for root check
 
+    // GPU Tweaks
+    val initialGpuMinFreqState = getInitialState("gpu_min_freq_on_boot")
+    val initialGpuMinFreqIsRunning = getInitialState("gpu_min_freq_is_running", initialGpuMinFreqState)
+    var gpuMinFreqOnBoot by rememberSaveable { mutableStateOf(initialGpuMinFreqState) }
+    var isGpuMinFreqRunning by remember { mutableStateOf(initialGpuMinFreqIsRunning) }
+    val initialGpuMaxFreqState = getInitialState("gpu_max_freq_on_boot")
+    val initialGpuMaxFreqIsRunning = getInitialState("gpu_max_freq_is_running", initialGpuMaxFreqState)
+    var gpuMaxFreqOnBoot by rememberSaveable { mutableStateOf(initialGpuMaxFreqState) }
+    var isGpuMaxFreqRunning by remember { mutableStateOf(initialGpuMaxFreqIsRunning) }
+    var isGpuMaxDropdownExpanded by remember { mutableStateOf(false) }
+    val gpuMaxFreqOptionsMhz = listOf("492", "545", "599", "640", "690")
+    var selectedGpuMaxFreq by rememberSaveable { mutableStateOf(sharedPrefs.getString("gpu_max_freq_selection", GpuUtils.DEFAULT_GPU_MAX_FREQ) ?: GpuUtils.DEFAULT_GPU_MAX_FREQ) }
+
+
     // Wireless ADB
     val initialWirelessAdbOnBootState = getInitialState("wireless_adb_on_boot")
     val initialWirelessAdbIsRunning = getInitialState("wireless_adb_is_running", initialWirelessAdbOnBootState)
@@ -458,8 +486,9 @@ fun TweaksScreen(
     var wifiIpAddress by remember { mutableStateOf("N/A") }
     var wirelessAdbOnBoot by rememberSaveable { mutableStateOf(initialWirelessAdbOnBootState) }
 
-    // CPU Monitor States
+    // Monitor States
     var cpuMonitorInfo by remember { mutableStateOf(CpuMonitorInfo()) }
+    var gpuMonitorInfo by remember { mutableStateOf(GpuMonitorInfo()) }
     var isFahrenheit by remember { mutableStateOf(sharedPrefs.getBoolean("temp_unit_is_fahrenheit", false)) }
 
     // Intercept Startup Apps
@@ -515,6 +544,8 @@ fun TweaksScreen(
                     isRainbowLedActive = false
                     isCustomLedActive = false
                     isMinFreqExecuting = false
+                    isGpuMinFreqRunning = false
+                    isGpuMaxFreqRunning = false
                     isInterceptorEnabled = false
                     isPowerLedActive = false
                 }
@@ -545,6 +576,8 @@ fun TweaksScreen(
                             putBoolean("custom_led_is_running", states.isCustomLedActive)
                             putBoolean("power_led_is_running", states.isPowerLedActive)
                             putBoolean("min_freq_is_running", states.isMinFreqExecuting)
+                            putBoolean("gpu_min_freq_is_running", states.isGpuMinFreqExecuting)
+                            putBoolean("gpu_max_freq_is_running", states.isGpuMaxFreqExecuting)
                             putBoolean("intercept_startup_apps", states.isInterceptorEnabled)
                             putBoolean("root_blocker_is_running", states.isRootBlockerManuallyEnabled)
                             putBoolean("wireless_adb_is_running", states.isWirelessAdbEnabled)
@@ -569,6 +602,8 @@ fun TweaksScreen(
                             }
                             isPowerLedActive = states.isPowerLedActive
                             isMinFreqExecuting = states.isMinFreqExecuting
+                            isGpuMinFreqRunning = states.isGpuMinFreqExecuting
+                            isGpuMaxFreqRunning = states.isGpuMaxFreqExecuting
                             isInterceptorEnabled = states.isInterceptorEnabled
                             isRootBlockerManuallyEnabled = states.isRootBlockerManuallyEnabled
                             isCpuPerfMode = states.isCpuPerfMode
@@ -638,6 +673,8 @@ fun TweaksScreen(
                     putBoolean("custom_led_is_running", states.isCustomLedActive)
                     putBoolean("power_led_is_running", states.isPowerLedActive)
                     putBoolean("min_freq_is_running", states.isMinFreqExecuting)
+                    putBoolean("gpu_min_freq_is_running", states.isGpuMinFreqExecuting)
+                    putBoolean("gpu_max_freq_is_running", states.isGpuMaxFreqExecuting)
                     putBoolean("intercept_startup_apps", states.isInterceptorEnabled)
                     putBoolean("root_blocker_is_running", states.isRootBlockerManuallyEnabled)
                     putBoolean("wireless_adb_is_running", states.isWirelessAdbEnabled)
@@ -655,6 +692,8 @@ fun TweaksScreen(
                 activity.isCustomLedActiveState.value = states.isCustomLedActive
                 activity.isPowerLedActiveState.value = states.isPowerLedActive
                 isMinFreqExecuting = states.isMinFreqExecuting
+                isGpuMinFreqRunning = states.isGpuMinFreqExecuting
+                isGpuMaxFreqRunning = states.isGpuMaxFreqExecuting
                 isInterceptorEnabled = states.isInterceptorEnabled
                 isRootBlockerManuallyEnabled = states.isRootBlockerManuallyEnabled
                 isCpuPerfMode = states.isCpuPerfMode
@@ -671,7 +710,10 @@ fun TweaksScreen(
             // Run on a background thread to avoid blocking UI
             while (true) {
                 withContext(Dispatchers.IO) {
-                    cpuMonitorInfo = CpuUtils.getCpuMonitorInfo()
+                    val cpuMonitorDeferred = async { CpuUtils.getCpuMonitorInfo() }
+                    val gpuMonitorDeferred = async { GpuUtils.getGpuMonitorInfo() }
+                    cpuMonitorInfo = cpuMonitorDeferred.await()
+                    gpuMonitorInfo = gpuMonitorDeferred.await()
                 }
                 delay(2000)
             }
@@ -703,7 +745,7 @@ fun TweaksScreen(
                     TweakCard("Rainbow LED", "Cycles notification LED through colors") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp) // Reduced space
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Run on Boot", style = MaterialTheme.typography.bodyMedium)
@@ -757,7 +799,7 @@ fun TweaksScreen(
                     TweakCard("Power Indicator LED", "Shows battery level with the LED color") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp) // Reduced space
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Run on Boot", style = MaterialTheme.typography.bodyMedium)
@@ -811,7 +853,7 @@ fun TweaksScreen(
                     TweakCard("Custom LED Color", "Set a static color for the LED") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp) // Reduced space
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Run on Boot", style = MaterialTheme.typography.bodyMedium)
@@ -967,7 +1009,6 @@ fun TweaksScreen(
 
                                             coroutineScope.launch {
                                                 if (isEnabled) {
-                                                    // Call the suspend function and wait for the actual result
                                                     val isSuccess = activity.enableRootBlocker()
                                                     isRootBlockerManuallyEnabled = isSuccess
                                                     sharedPrefs.edit().putBoolean("root_blocker_is_running", isSuccess).apply()
@@ -1256,7 +1297,6 @@ fun TweaksScreen(
                                 checked = isVoidTransitionEnabled,
                                 onCheckedChange = { isEnabled ->
                                     isVoidTransitionEnabled = isEnabled
-                                    // ADDED: Persist the state
                                     sharedPrefs.edit().putBoolean("transition_void_enabled", isEnabled).apply()
                                     coroutineScope.launch(Dispatchers.IO) {
                                         val command = if (isEnabled) TweakCommands.SET_TRANSITION_VOID else TweakCommands.SET_TRANSITION_IMMERSIVE
@@ -1396,7 +1436,7 @@ fun TweaksScreen(
                                     onCheckedChange = { checked ->
                                         minFreqOnBoot = checked
                                         sharedPrefs.edit().putBoolean("min_freq_on_boot", checked).apply()
-                                        coroutineScope.launch { snackbarHostState.showSnackbar(if (checked) "Min Freq on Boot Enabled" else "Min Freq on Boot Disabled") }
+                                        coroutineScope.launch { snackbarHostState.showSnackbar(if (checked) "CPU Min Freq on Boot Enabled" else "CPU Min Freq on Boot Disabled") }
                                     },
                                     enabled = isRooted
                                 )
@@ -1410,10 +1450,10 @@ fun TweaksScreen(
                                         try {
                                             if (isMinFreqExecuting) {
                                                 activity.startTweakServiceAction(TweakService.ACTION_START_MIN_FREQ)
-                                                coroutineScope.launch { snackbarHostState.showSnackbar("Min Freq lock started") }
+                                                coroutineScope.launch { snackbarHostState.showSnackbar("CPU Min Freq lock started") }
                                             } else {
                                                 activity.startTweakServiceAction(TweakService.ACTION_STOP_MIN_FREQ)
-                                                coroutineScope.launch { snackbarHostState.showSnackbar("Min Freq lock stopped") }
+                                                coroutineScope.launch { snackbarHostState.showSnackbar("CPU Min Freq lock stopped") }
                                             }
                                             sharedPrefs.edit().putBoolean("min_freq_is_running", isMinFreqExecuting).apply()
                                         } catch (e: Exception) {
@@ -1452,6 +1492,207 @@ fun TweaksScreen(
                                 },
                                 enabled = isRooted
                             )
+                        }
+                    }
+                }
+            }
+            item {
+                TweakSection(title = "GPU Tweaks", sharedPrefs = sharedPrefs) {
+                    if (isRooted) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(text = "GPU Monitor", style = MaterialTheme.typography.titleMedium)
+                                Spacer(modifier = Modifier.height(12.dp))
+            
+                                val tempC = gpuMonitorInfo.tempCelsius
+                                val tempF = (tempC * 9 / 5) + 32
+            
+                                // Temperature toggle (reuse same Fahrenheit setting)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text("°C")
+                                    Switch(
+                                        checked = isFahrenheit,
+                                        onCheckedChange = { checked ->
+                                            isFahrenheit = checked
+                                            sharedPrefs.edit()
+                                                .putBoolean("temp_unit_is_fahrenheit", checked)
+                                                .apply()
+                                        },
+                                        modifier = Modifier
+                                            .height(24.dp)
+                                            .padding(horizontal = 8.dp)
+                                    )
+                                    Text("°F")
+                                }
+            
+                                Text(
+                                    text = if (isFahrenheit) "$tempF °F" else "$tempC °C",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+            
+                                Spacer(modifier = Modifier.height(12.dp))
+            
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "${gpuMonitorInfo.usagePercent}% Usage",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        // Show the current max/min from the monitor
+                                        text = "${gpuMonitorInfo.maxFreqMhz} - ${gpuMonitorInfo.minFreqMhz} MHz",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    TweakCard("Set Min Frequency", "Sets minimum GPU frequency to 285MHz") {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Run on Boot", style = MaterialTheme.typography.bodyMedium)
+                                Switch(
+                                    checked = gpuMinFreqOnBoot,
+                                    onCheckedChange = { checked ->
+                                        gpuMinFreqOnBoot = checked
+                                        sharedPrefs.edit().putBoolean("gpu_min_freq_on_boot", checked).apply()
+                                        coroutineScope.launch { snackbarHostState.showSnackbar(if (checked) "GPU Min Freq on Boot Enabled" else "GPU Min Freq on Boot Disabled") }
+                                    },
+                                    enabled = isRooted
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        val shouldStart = !isGpuMinFreqRunning
+                                        isGpuMinFreqRunning = shouldStart
+                                        try {
+                                            if (shouldStart) {
+                                                activity.startTweakServiceAction(TweakService.ACTION_START_GPU_MIN_FREQ)
+                                                coroutineScope.launch { snackbarHostState.showSnackbar("GPU Min Freq lock started") }
+                                            } else {
+                                                activity.startTweakServiceAction(TweakService.ACTION_STOP_GPU_MIN_FREQ)
+                                                coroutineScope.launch { snackbarHostState.showSnackbar("GPU Min Freq lock stopped") }
+                                            }
+                                            sharedPrefs.edit().putBoolean("gpu_min_freq_is_running", isGpuMinFreqRunning).apply()
+                                        } catch (e: Exception) {
+                                            isGpuMinFreqRunning = !shouldStart
+                                        }
+                                    }
+                                },
+                                enabled = isRooted,
+                                modifier = Modifier.widthIn(min = 80.dp)
+                            ) {
+                                Text(if (isGpuMinFreqRunning) "Stop" else "Start")
+                            }
+                        }
+                    }
+                    TweakCard("Set Max Frequency", "Sets maximum GPU frequency from selection\nWARNING: Setting higher than 492MHz could cause instability") {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.wrapContentSize(Alignment.TopStart)
+                                ) {
+                                    TextButton(
+                                        onClick = { isGpuMaxDropdownExpanded = true },
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "$selectedGpuMaxFreq MHz",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Icon(
+                                            imageVector = if (isGpuMaxDropdownExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp).padding(start = 4.dp)
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = isGpuMaxDropdownExpanded,
+                                        onDismissRequest = { isGpuMaxDropdownExpanded = false }
+                                    ) {
+                                        gpuMaxFreqOptionsMhz.forEach { freqMhz ->
+                                            DropdownMenuItem(
+                                                text = { Text("$freqMhz MHz", style = MaterialTheme.typography.bodySmall) },
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                                onClick = {
+                                                    selectedGpuMaxFreq = freqMhz
+                                                    sharedPrefs.edit().putString("gpu_max_freq_selection", freqMhz).apply()
+                                                    isGpuMaxDropdownExpanded = false
+                                                    
+                                                    // If script is running, restart it to apply new freq
+                                                    if (isGpuMaxFreqRunning) {
+                                                        activity.startTweakServiceAction(TweakService.ACTION_START_GPU_MAX_FREQ)
+                                                        coroutineScope.launch { snackbarHostState.showSnackbar("GPU Max Freq lock updated to $freqMhz MHz") }
+                                                    } else {
+                                                         coroutineScope.launch { snackbarHostState.showSnackbar("GPU Max Freq selection saved") }
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Run on Boot", style = MaterialTheme.typography.bodyMedium)
+                                    Switch(
+                                        checked = gpuMaxFreqOnBoot,
+                                        onCheckedChange = { checked ->
+                                            gpuMaxFreqOnBoot = checked
+                                            sharedPrefs.edit().putBoolean("gpu_max_freq_on_boot", checked).apply()
+                                            coroutineScope.launch { snackbarHostState.showSnackbar(if (checked) "GPU Max Freq on Boot Enabled" else "GPU Max Freq on Boot Disabled") }
+                                        },
+                                        enabled = isRooted
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        val shouldStart = !isGpuMaxFreqRunning
+                                        isGpuMaxFreqRunning = shouldStart
+                                        try {
+                                            if (shouldStart) {
+                                                sharedPrefs.edit().putString("gpu_max_freq_selection", selectedGpuMaxFreq).apply()
+                                                activity.startTweakServiceAction(TweakService.ACTION_START_GPU_MAX_FREQ)
+                                                coroutineScope.launch { snackbarHostState.showSnackbar("GPU Max Freq lock started at $selectedGpuMaxFreq MHz") }
+                                            } else {
+                                                activity.startTweakServiceAction(TweakService.ACTION_STOP_GPU_MAX_FREQ)
+                                                coroutineScope.launch { snackbarHostState.showSnackbar("GPU Max Freq lock stopped") }
+                                            }
+                                            sharedPrefs.edit().putBoolean("gpu_max_freq_is_running", isGpuMaxFreqRunning).apply()
+                                        } catch (e: Exception) {
+                                            Log.e("TweaksActivity", "Failed to toggle GPU Max Freq script", e)
+                                            isGpuMaxFreqRunning = !shouldStart
+                                        }
+                                    }
+                                },
+                                enabled = isRooted,
+                                modifier = Modifier.widthIn(min = 80.dp)
+                            ) {
+                                Text(if (isGpuMaxFreqRunning) "Stop" else "Start")
+                            }
                         }
                     }
                 }
@@ -1508,7 +1749,7 @@ fun TweakCard(
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column(modifier = Modifier
                 .weight(1f)
-                .padding(end = 8.dp)) { // Reduced padding from 16.dp to 8.dp
+                .padding(end = 8.dp)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = description, style = MaterialTheme.typography.bodyMedium)
@@ -1540,7 +1781,7 @@ object TweakCommands {
     """.trimIndent()
 
     val POWER_LED_SCRIPT = """
-        #!/system/bin/sh
+        #!/system/bin.sh
 
         RED_LED="/sys/class/leds/red/brightness"
         GREEN_LED="/sys/class/leds/green/brightness"

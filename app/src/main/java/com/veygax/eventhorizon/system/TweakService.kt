@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.veygax.eventhorizon.ui.activities.TweakCommands
 import com.veygax.eventhorizon.utils.CpuUtils
+import com.veygax.eventhorizon.utils.GpuUtils
 import com.veygax.eventhorizon.utils.RootUtils
 import kotlinx.coroutines.*
 import java.io.File
@@ -78,6 +79,11 @@ class TweakService : Service() {
         const val ACTION_START_INTERCEPTOR = "com.veygax.eventhorizon.START_INTERCEPTOR"
         const val ACTION_STOP_INTERCEPTOR = "com.veygax.eventhorizon.STOP_INTERCEPTOR"
         
+        const val ACTION_START_GPU_MIN_FREQ = "com.veygax.eventhorizon.START_GPU_MIN_FREQ"
+        const val ACTION_STOP_GPU_MIN_FREQ = "com.veygax.eventhorizon.STOP_GPU_MIN_FREQ"
+        const val ACTION_START_GPU_MAX_FREQ = "com.veygax.eventhorizon.START_GPU_MAX_FREQ"
+        const val ACTION_STOP_GPU_MAX_FREQ = "com.veygax.eventhorizon.STOP_GPU_MAX_FREQ"
+        
         const val ACTION_STOP_ALL = "com.veygax.eventhorizon.STOP_ALL"
 
         const val ACTION_START_USB_INTERCEPTOR = "com.veygax.eventhorizon.START_USB_INTERCEPTOR"
@@ -100,6 +106,8 @@ class TweakService : Service() {
     private var isMinFreqRunning: Boolean = false
     private var isInterceptorRunning: Boolean = false
     private var isUsbInterceptorRunning = false
+    private var isGpuMinFreqRunning: Boolean = false
+    private var isGpuMaxFreqRunning: Boolean = false
 
     
     // Files for scripts
@@ -109,6 +117,8 @@ class TweakService : Service() {
     private lateinit var minFreqScriptFile: File
     private lateinit var interceptorScriptFile: File
     private lateinit var usbInterceptorScriptFile: File
+    private lateinit var gpuMinFreqScriptFile: File
+    private lateinit var gpuMaxFreqScriptFile: File
 
     override fun onCreate() {
         super.onCreate()
@@ -118,7 +128,8 @@ class TweakService : Service() {
         minFreqScriptFile = File(filesDir, CpuUtils.SCRIPT_NAME)
         interceptorScriptFile = File(filesDir, "interceptor.sh")
         usbInterceptorScriptFile = File(filesDir, "usb_interceptor.sh")
-        
+        gpuMinFreqScriptFile = File(filesDir, GpuUtils.GPU_MIN_FREQ_SCRIPT_NAME)
+        gpuMaxFreqScriptFile = File(filesDir, GpuUtils.GPU_MAX_FREQ_SCRIPT_NAME)
 
         // Initialize state robustly on service creation (to catch scripts running from boot)
         runBlocking(Dispatchers.IO) {
@@ -135,11 +146,15 @@ class TweakService : Service() {
         val runningCustom = RootUtils.runAsRoot("ps -ef | grep custom_led.sh | grep -v grep").trim().isNotEmpty()
         val runningCpu = RootUtils.runAsRoot("ps -ef | grep ${CpuUtils.SCRIPT_NAME} | grep -v grep").trim().isNotEmpty()
         val runningInterceptor = RootUtils.runAsRoot("ps -ef | grep interceptor.sh | grep -v grep").trim().isNotEmpty()
+        val runningGpuMin = RootUtils.runAsRoot("ps -ef | grep ${GpuUtils.GPU_MIN_FREQ_SCRIPT_NAME} | grep -v grep").trim().isNotEmpty()
+        val runningGpuMax = RootUtils.runAsRoot("ps -ef | grep ${GpuUtils.GPU_MAX_FREQ_SCRIPT_NAME} | grep -v grep").trim().isNotEmpty()
 
         isRgbRunning = runningRgb
         isCustomLedRunning = runningCustom
         isMinFreqRunning = runningCpu
         isInterceptorRunning = runningInterceptor
+        isGpuMinFreqRunning = runningGpuMin
+        isGpuMaxFreqRunning = runningGpuMax
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -185,6 +200,22 @@ class TweakService : Service() {
                 ACTION_STOP_MIN_FREQ -> {
                     stopMinFreq()
                     sharedPrefs.edit().putBoolean("min_freq_is_running", false).apply()
+                }
+                ACTION_START_GPU_MIN_FREQ -> {
+                    startGpuMinFreq()
+                    sharedPrefs.edit().putBoolean("gpu_min_freq_is_running", true).apply()
+                }
+                ACTION_STOP_GPU_MIN_FREQ -> {
+                    stopGpuMinFreq()
+                    sharedPrefs.edit().putBoolean("gpu_min_freq_is_running", false).apply()
+                }
+                ACTION_START_GPU_MAX_FREQ -> {
+                    startGpuMaxFreq()
+                    sharedPrefs.edit().putBoolean("gpu_max_freq_is_running", true).apply()
+                }
+                ACTION_STOP_GPU_MAX_FREQ -> {
+                    stopGpuMaxFreq()
+                    sharedPrefs.edit().putBoolean("gpu_max_freq_is_running", false).apply()
                 }
                 ACTION_APPLY_PASSTHROUGH_FIX -> {
                     applyPassthroughFix()
@@ -304,6 +335,36 @@ class TweakService : Service() {
         isMinFreqRunning = false
     }
 
+    private suspend fun startGpuMinFreq() {
+        RootUtils.runAsRoot("pkill -f ${GpuUtils.GPU_MIN_FREQ_SCRIPT_NAME} || true")
+        val scriptContent = GpuUtils.getGpuMinFreqScript(GpuUtils.DEFAULT_GPU_MIN_FREQ)
+        gpuMinFreqScriptFile.writeText(scriptContent)
+        RootUtils.runAsRoot("chmod +x ${gpuMinFreqScriptFile.absolutePath}")
+        RootUtils.runAsRoot("nohup ${gpuMinFreqScriptFile.absolutePath} > /dev/null 2>&1 &")
+        isGpuMinFreqRunning = true
+    }
+
+    private suspend fun stopGpuMinFreq() {
+        RootUtils.runAsRoot("pkill -f ${GpuUtils.GPU_MIN_FREQ_SCRIPT_NAME} || true")
+        isGpuMinFreqRunning = false
+    }
+
+    private suspend fun startGpuMaxFreq() {
+        RootUtils.runAsRoot("pkill -f ${GpuUtils.GPU_MAX_FREQ_SCRIPT_NAME} || true")
+        val freqMhz = sharedPrefs.getString("gpu_max_freq_selection", GpuUtils.DEFAULT_GPU_MAX_FREQ) ?: GpuUtils.DEFAULT_GPU_MAX_FREQ
+        val scriptContent = GpuUtils.getGpuMaxFreqScript(freqMhz)
+        gpuMaxFreqScriptFile.writeText(scriptContent)
+        RootUtils.runAsRoot("chmod +x ${gpuMaxFreqScriptFile.absolutePath}")
+        RootUtils.runAsRoot("nohup ${gpuMaxFreqScriptFile.absolutePath} > /dev/null 2>&1 &")
+        isGpuMaxFreqRunning = true
+    }
+
+    private suspend fun stopGpuMaxFreq() {
+        RootUtils.runAsRoot("pkill -f ${GpuUtils.GPU_MAX_FREQ_SCRIPT_NAME} || true")
+        isGpuMaxFreqRunning = false
+        GpuUtils.setGpuMaxFreq("690000000")
+    }
+
     private fun applyPassthroughFix() {
         serviceScope.launch {
             if (RootUtils.isRootAvailable()) {
@@ -360,20 +421,22 @@ class TweakService : Service() {
         updateServiceState()
     }
 
-    private suspend fun stopUsbInterceptor() {
+private suspend fun stopUsbInterceptor() {
         RootUtils.runAsRoot("pkill -f usb_interceptor.sh || true")
         isUsbInterceptorRunning = false
         updateServiceState()
     }
     
     private fun isAnyTweakRunning(): Boolean {
-        return isRgbRunning || isCustomLedRunning || isPowerLedRunning || isMinFreqRunning || isInterceptorRunning || isUsbInterceptorRunning
+        return isRgbRunning || isCustomLedRunning || isPowerLedRunning || isMinFreqRunning || isInterceptorRunning || isUsbInterceptorRunning || isGpuMinFreqRunning || isGpuMaxFreqRunning
     }
     
     private suspend fun stopAllTweaksAndService() {
         // Run all stop commands
         stopAnyLed()
         stopMinFreq()
+        stopGpuMinFreq()
+        stopGpuMaxFreq()
         stopInterceptor()
         stopUsbInterceptor()
 
@@ -463,15 +526,18 @@ class TweakService : Service() {
             putBoolean("power_led_is_running", false)
             putBoolean("intercept_startup_apps", false)
             putBoolean("min_freq_is_running", false)
+            putBoolean("gpu_min_freq_is_running", false)
+            putBoolean("gpu_max_freq_is_running", false)
             apply()
         }
 
-        // Ensure scripts are killed on service destruction, just in case
         runBlocking(Dispatchers.IO) {
             RootUtils.runAsRoot("pkill -f rgb_led.sh || true")
             RootUtils.runAsRoot("pkill -f custom_led.sh || true")
             RootUtils.runAsRoot("pkill -f power_led.sh || true")
             RootUtils.runAsRoot("pkill -f ${CpuUtils.SCRIPT_NAME} || true")
+            RootUtils.runAsRoot("pkill -f ${GpuUtils.GPU_MIN_FREQ_SCRIPT_NAME} || true")
+            RootUtils.runAsRoot("pkill -f ${GpuUtils.GPU_MAX_FREQ_SCRIPT_NAME} || true")
             RootUtils.runAsRoot("pkill -f interceptor.sh || true")
         }
     }
