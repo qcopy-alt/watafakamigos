@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.net.VpnService
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -698,7 +699,7 @@ fun TweaksScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                TweakSection(title = "LED Tweaks") {
+                TweakSection(title = "LED Tweaks", sharedPrefs = sharedPrefs) {
                     TweakCard("Rainbow LED", "Cycles notification LED through colors") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -865,7 +866,7 @@ fun TweaksScreen(
                 }
             }
             item {
-                TweakSection(title = "Utilities") {
+                TweakSection(title = "Utilities", sharedPrefs = sharedPrefs) {
                     TweakCard(
                         title = "Double-Tap Fix",
                         description = "Applies fix for broken Double-Tap Passthrough feature"
@@ -1229,7 +1230,7 @@ fun TweaksScreen(
             }
 
             item {
-                TweakSection(title = "System UI") {
+                TweakSection(title = "System UI", sharedPrefs = sharedPrefs) {
                     TweakCard("UI Switching", "Switches between Navigator and Dock without rebooting") {
                         Column(horizontalAlignment = Alignment.End) {
                             Text(if (uiSwitchState == 1) "Navigator UI" else "Dock UI", style = MaterialTheme.typography.bodyMedium)
@@ -1329,7 +1330,7 @@ fun TweaksScreen(
             }
 
             item {
-                TweakSection(title = "CPU Tweaks") {
+                TweakSection(title = "CPU Tweaks", sharedPrefs = sharedPrefs) {
                     // --- Centered and Compacted CPU Monitor Card ---
                     if (isRooted) {
                         Card(modifier = Modifier
@@ -1462,14 +1463,20 @@ fun TweaksScreen(
 @Composable
 fun TweakSection(
     title: String,
+    sharedPrefs: SharedPreferences,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var isExpanded by rememberSaveable { mutableStateOf(true) }
+    val key = "section_expanded_$title"
+    var isExpanded by remember { mutableStateOf(sharedPrefs.getBoolean(key, true)) }
+
     Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { isExpanded = !isExpanded }
+                .clickable {
+                    isExpanded = !isExpanded
+                    sharedPrefs.edit().putBoolean(key, isExpanded).apply()
+                }
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
