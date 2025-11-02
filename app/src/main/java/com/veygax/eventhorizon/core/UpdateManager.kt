@@ -81,10 +81,36 @@ object UpdateManager {
         }
     }
 
-    /**
-     * Compares version strings.
-     */
-    private fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean {
+	/**
+	 * Checks both dev and stable channels.
+	 * If on dev, it compares stable too, and returns the higher version.
+	 */
+	suspend fun checkDevAndStableUpdates(
+	    context: Context,
+	    owner: String,
+	    devRepo: String,
+	    stableRepo: String
+	): ReleaseInfo? {
+	    val devRelease = checkForUpdate(context, owner, devRepo)
+	    val stableRelease = checkForUpdate(context, owner, stableRepo)
+
+	    return when {
+	        devRelease == null && stableRelease == null -> null
+	        devRelease == null -> stableRelease
+	        stableRelease == null -> devRelease
+	        else -> {
+	            // Both are valid, compare by version number
+	            if (isNewerVersion(stableRelease.version, devRelease.version)) {
+	                // Stable has a higher version than dev
+	                stableRelease
+	            } else {
+	                devRelease
+	            }
+	        }
+	    }
+	}
+
+    fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean {
         val cleanLatest = latestVersion.removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
         val cleanCurrent = currentVersion.removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
 

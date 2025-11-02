@@ -233,12 +233,37 @@ fun EventHorizonApp(
             }
 
             isCheckingForUpdate = true
-            val (owner, repo) = when (updateChannel) {
-                "dev" -> "Lumince" to "eventhorizon"
-                else -> "veygax" to "eventhorizon"
+
+            // Define repositories for stable and dev
+            val stableOwner = "veygax"
+            val stableRepo = "eventhorizon"
+            val devOwner = "Lumince"
+            val devRepo = "eventhorizon"
+
+            val release = when (updateChannel) {
+                "dev" -> {
+                    // Check both dev and stable; return the newer one
+                    val devRelease = UpdateManager.checkForUpdate(context, devOwner, devRepo)
+                    val stableRelease = UpdateManager.checkForUpdate(context, stableOwner, stableRepo)
+
+                    when {
+                        devRelease == null && stableRelease == null -> null
+                        devRelease == null -> stableRelease
+                        stableRelease == null -> devRelease
+                        else -> if (
+                            UpdateManager.run {
+                                isNewerVersion(stableRelease.version, devRelease.version)
+                            }
+                        ) stableRelease else devRelease
+                    }
+                }
+                else -> {
+                    UpdateManager.checkForUpdate(context, stableOwner, stableRepo)
+                }
             }
-            val release = UpdateManager.checkForUpdate(context, owner, repo)
+
             isCheckingForUpdate = false
+
             if (release != null) {
                 updateInfo = release
                 showUpdateDialog = true
