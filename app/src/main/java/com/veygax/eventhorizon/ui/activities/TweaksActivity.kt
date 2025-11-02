@@ -1537,30 +1537,45 @@ fun TweaksScreen(
                                 }
                             }
                             item {
-                                TweakCard("CPU Governor", "Switches the CPU governor between schedutil and performance") {
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text(if (isCpuPerfMode) "Performance" else "Schedutil", style = MaterialTheme.typography.bodyMedium)
+                                TweakCard("CPU Governor", "Toggle between the schedutil and performance governors\nSystem switches governor when needed") {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        var isPerfMode by remember { mutableStateOf(false) }
+
+                                        // Live update when governor changes
+                                        LaunchedEffect(Unit) {
+                                            val (littleGov, bigGov) = CpuUtils.getGovernor()
+                                            isPerfMode = (littleGov == "performance" && bigGov == "performance")
+                                        }
+
+                                        // Periodically re-check (to detect external changes)
+                                        LaunchedEffect(Unit) {
+                                            while (true) {
+                                                val isPerf = CpuUtils.isPerformanceMode()
+                                                if (isPerf != isPerfMode) {
+                                                    isPerfMode = isPerf
+                                                }
+                                                delay(3000)
+                                            }
+                                        }
+
                                         Switch(
-                                            checked = isCpuPerfMode,
-                                            onCheckedChange = { isEnabled ->
-                                                isCpuPerfMode = isEnabled
-                                                coroutineScope.launch(Dispatchers.IO) {
-                                                    val governor = if (isEnabled) "performance" else "schedutil"
-                                                    val command = (0..5).joinToString("\n") {
-                                                        """
-                                                        chmod 644 /sys/devices/system/cpu/cpu$it/cpufreq/scaling_governor
-                                                        echo '$governor' > /sys/devices/system/cpu/cpu$it/cpufreq/scaling_governor
-                                                        chmod 444 /sys/devices/system/cpu/cpu$it/cpufreq/scaling_governor
-                                                        """.trimIndent()
-                                                    }
-                                                    RootUtils.runAsRoot(command)
-                                                    withContext(Dispatchers.Main) {
-                                                        snackbarHostState.showSnackbar("CPU Governor set to $governor")
-                                                    }
+                                            checked = isPerfMode,
+                                            onCheckedChange = { checked ->
+                                                coroutineScope.launch {
+                                                    val targetGov = if (checked) "performance" else "schedutil"
+                                                    CpuUtils.setGovernor(targetGov)
+                                                    isPerfMode = CpuUtils.isPerformanceMode()
+                                                    snackbarHostState.showSnackbar(
+                                                        if (checked) "CPU set to performance mode" else "CPU set to schedutil mode"
+                                                    )
                                                 }
                                             },
                                             enabled = isRooted
                                         )
+                                                                    Text(if (isPerfMode) "Performance" else "Schedutil", style = MaterialTheme.typography.bodyMedium)
                                     }
                                 }
                             }

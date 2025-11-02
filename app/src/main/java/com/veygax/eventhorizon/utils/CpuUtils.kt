@@ -21,13 +21,12 @@ object CpuUtils {
     const val SCRIPT_NAME = "min_freq_lock.sh"
     private const val TAG = "CpuUtils"
 
-    // Frequencies for the Snapdragon XR2 Gen 2 in the Quest 3
     // Cores 0-3 are LITTLE, Cores 4-6 are big/Prime
     private val LITTLE_CORE_PATHS = (0..3).map { "/sys/devices/system/cpu/cpu$it/cpufreq/scaling_min_freq" }
     private val BIG_CORE_PATHS = (4..6).map { "/sys/devices/system/cpu/cpu$it/cpufreq/scaling_min_freq" }
     
-    const val DEFAULT_LITTLE_FREQ = "691200" // Kept public for TweakService
-    const val DEFAULT_BIG_FREQ = "691200" // Kept public for TweakService
+    const val DEFAULT_LITTLE_FREQ = "691200"
+    const val DEFAULT_BIG_FREQ = "691200"
 
     // --- CPU Usage Calculation Properties ---
     private data class CoreStat(val idle: Long, val total: Long)
@@ -60,16 +59,15 @@ object CpuUtils {
         )
     }
     
-    // --- New, more robust temperature finding function ---
     private suspend fun findCpuTemperature(): Int {
-        for (i in 0..19) { // Check a reasonable number of thermal zones
+        for (i in 0..19) {
             val type = RootUtils.runAsRoot("cat /sys/class/thermal/thermal_zone$i/type").trim()
             if (type.contains("cpu", ignoreCase = true)) {
                 val tempRaw = RootUtils.runAsRoot("cat /sys/class/thermal/thermal_zone$i/temp").trim()
                 return tempRaw.toIntOrNull()?.div(1000) ?: 0
             }
         }
-        return 0 // Return 0 if no CPU zone is found
+        return 0
     }
 
     private suspend fun getCpuUsage(): Map<String, Int> = withContext(Dispatchers.IO) {
@@ -116,6 +114,28 @@ object CpuUtils {
             Log.e(TAG, "Failed to calculate CPU usage", e)
         }
         usageMap
+    }
+
+    private const val LITTLE_GOV_PATH = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+    private const val BIG_GOV_PATH = "/sys/devices/system/cpu/cpu4/cpufreq/scaling_governor"
+
+    suspend fun getGovernor(): Pair<String, String> = withContext(Dispatchers.IO) {
+        val littleGov = RootUtils.runAsRoot("cat $LITTLE_GOV_PATH").trim()
+        val bigGov = RootUtils.runAsRoot("cat $BIG_GOV_PATH").trim()
+        littleGov to bigGov
+    }
+
+    suspend fun setGovernor(governor: String) = withContext(Dispatchers.IO) {
+        val cmd = """
+            echo "$governor" > $LITTLE_GOV_PATH
+            echo "$governor" > $BIG_GOV_PATH
+        """.trimIndent()
+        RootUtils.runAsRoot(cmd)
+    }
+
+    suspend fun isPerformanceMode(): Boolean = withContext(Dispatchers.IO) {
+        val (littleGov, bigGov) = getGovernor()
+        littleGov == "performance" && bigGov == "performance"
     }
 
     fun getMinFreqScript(littleFreq: String, bigFreq: String): String {
