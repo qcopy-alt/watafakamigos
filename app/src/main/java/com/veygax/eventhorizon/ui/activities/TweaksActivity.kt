@@ -1,4 +1,4 @@
-package com.veygax.eventhorizon.ui.activities
+package com.qcopy.watafakamigos.ui.activities
 
 import android.app.Activity
 import android.app.ActivityManager
@@ -42,13 +42,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.veygax.eventhorizon.system.DnsBlockerService
-import com.veygax.eventhorizon.system.TweakService
-import com.veygax.eventhorizon.utils.CpuMonitorInfo
-import com.veygax.eventhorizon.utils.CpuUtils
-import com.veygax.eventhorizon.utils.GpuMonitorInfo
-import com.veygax.eventhorizon.utils.GpuUtils
-import com.veygax.eventhorizon.utils.RootUtils
+import com.qcopy.watafakamigos.system.DnsBlockerService
+import com.qcopy.watafakamigos.system.TweakService
+import com.qcopy.watafakamigos.utils.CpuMonitorInfo
+import com.qcopy.watafakamigos.utils.CpuUtils
+import com.qcopy.watafakamigos.utils.GpuMonitorInfo
+import com.qcopy.watafakamigos.utils.GpuUtils
+import com.qcopy.watafakamigos.utils.RootUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay

@@ -1,4 +1,4 @@
-package com.veygax.eventhorizon.utils
+package com.qcopy.watafakamigos.utils
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

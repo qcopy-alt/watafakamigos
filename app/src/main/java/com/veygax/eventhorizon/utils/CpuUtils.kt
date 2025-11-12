@@ -1,4 +1,4 @@
-package com.veygax.eventhorizon.utils
+package com.qcopy.watafakamigos.utils
 
 import android.content.Context
 import android.util.Log

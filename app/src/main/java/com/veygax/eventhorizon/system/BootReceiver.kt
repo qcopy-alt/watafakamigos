@@ -1,15 +1,15 @@
-package com.veygax.eventhorizon.system
+package com.qcopy.watafakamigos.system
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.scottyab.rootbeer.RootBeer
-import com.veygax.eventhorizon.system.DnsBlockerService
-import com.veygax.eventhorizon.ui.activities.MainActivity
-import com.veygax.eventhorizon.utils.CpuUtils
-import com.veygax.eventhorizon.utils.GpuUtils
-import com.veygax.eventhorizon.utils.RootUtils
-import com.veygax.eventhorizon.ui.activities.TweakCommands
+import com.qcopy.watafakamigos.system.DnsBlockerService
+import com.qcopy.watafakamigos.ui.activities.MainActivity
+import com.qcopy.watafakamigos.utils.CpuUtils
+import com.qcopy.watafakamigos.utils.GpuUtils
+import com.qcopy.watafakamigos.utils.RootUtils
+import com.qcopy.watafakamigos.ui.activities.TweakCommands
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -282,7 +282,7 @@ class BootReceiver : BroadcastReceiver() {
                     if (RootUtils.isRootAvailable()) {
                         RootUtils.runAsRoot("am force-stop com.oculus.systemdriver", useMountMaster = true)
                         delay(5000)
-                        RootUtils.runAsRoot("am start -n com.veygax.eventhorizon/.ui.activities.MainActivity", useMountMaster = true)
+                        RootUtils.runAsRoot("am start -n com.qcopy.watafakamigos/.ui.activities.MainActivity", useMountMaster = true)
                         sharedPrefs.edit().putBoolean("passthrough_fix_on_boot", true).apply()
 
                         val appToLaunch = sharedPrefs.getString("start_app_on_boot", null)

@@ -1,4 +1,4 @@
-package com.veygax.eventhorizon.system
+package com.qcopy.watafakamigos.system
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -13,10 +13,10 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.veygax.eventhorizon.ui.activities.TweakCommands
-import com.veygax.eventhorizon.utils.CpuUtils
-import com.veygax.eventhorizon.utils.GpuUtils
-import com.veygax.eventhorizon.utils.RootUtils
+import com.qcopy.watafakamigos.ui.activities.TweakCommands
+import com.qcopy.watafakamigos.utils.CpuUtils
+import com.qcopy.watafakamigos.utils.GpuUtils
+import com.qcopy.watafakamigos.utils.RootUtils
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.BufferedReader
@@ -67,33 +67,33 @@ class TweakService : Service() {
     """.trimIndent()
 
     companion object {
-        const val ACTION_START_RGB = "com.veygax.eventhorizon.START_RGB"
-        const val ACTION_STOP_RGB = "com.veygax.eventhorizon.STOP_RGB"
-        const val ACTION_START_CUSTOM_LED = "com.veygax.eventhorizon.START_CUSTOM_LED"
-        const val ACTION_STOP_CUSTOM_LED = "com.veygax.eventhorizon.STOP_CUSTOM_LED"
-        const val ACTION_START_POWER_LED = "com.veygax.eventhorizon.START_POWER_LED"
-        const val ACTION_STOP_POWER_LED = "com.veygax.eventhorizon.STOP_POWER_LED"
-        const val ACTION_START_MIN_FREQ = "com.veygax.eventhorizon.START_MIN_FREQ"
-        const val ACTION_STOP_MIN_FREQ = "com.veygax.eventhorizon.STOP_MIN_FREQ"
+        const val ACTION_START_RGB = "com.qcopy.watafakamigos.START_RGB"
+        const val ACTION_STOP_RGB = "com.qcopy.watafakamigos.STOP_RGB"
+        const val ACTION_START_CUSTOM_LED = "com.qcopy.watafakamigos.START_CUSTOM_LED"
+        const val ACTION_STOP_CUSTOM_LED = "com.qcopy.watafakamigos.STOP_CUSTOM_LED"
+        const val ACTION_START_POWER_LED = "com.qcopy.watafakamigos.START_POWER_LED"
+        const val ACTION_STOP_POWER_LED = "com.qcopy.watafakamigos.STOP_POWER_LED"
+        const val ACTION_START_MIN_FREQ = "com.qcopy.watafakamigos.START_MIN_FREQ"
+        const val ACTION_STOP_MIN_FREQ = "com.qcopy.watafakamigos.STOP_MIN_FREQ"
         const val ACTION_APPLY_PASSTHROUGH_FIX = "ACTION_APPLY_PASSTHROUGH_FIX"
-        const val ACTION_START_INTERCEPTOR = "com.veygax.eventhorizon.START_INTERCEPTOR"
-        const val ACTION_STOP_INTERCEPTOR = "com.veygax.eventhorizon.STOP_INTERCEPTOR"
+        const val ACTION_START_INTERCEPTOR = "com.qcopy.watafakamigos.START_INTERCEPTOR"
+        const val ACTION_STOP_INTERCEPTOR = "com.qcopy.watafakamigos.STOP_INTERCEPTOR"
         
-        const val ACTION_START_GPU_MIN_FREQ = "com.veygax.eventhorizon.START_GPU_MIN_FREQ"
-        const val ACTION_STOP_GPU_MIN_FREQ = "com.veygax.eventhorizon.STOP_GPU_MIN_FREQ"
-        const val ACTION_START_GPU_MAX_FREQ = "com.veygax.eventhorizon.START_GPU_MAX_FREQ"
-        const val ACTION_STOP_GPU_MAX_FREQ = "com.veygax.eventhorizon.STOP_GPU_MAX_FREQ"
+        const val ACTION_START_GPU_MIN_FREQ = "com.qcopy.watafakamigos.START_GPU_MIN_FREQ"
+        const val ACTION_STOP_GPU_MIN_FREQ = "com.qcopy.watafakamigos.STOP_GPU_MIN_FREQ"
+        const val ACTION_START_GPU_MAX_FREQ = "com.qcopy.watafakamigos.START_GPU_MAX_FREQ"
+        const val ACTION_STOP_GPU_MAX_FREQ = "com.qcopy.watafakamigos.STOP_GPU_MAX_FREQ"
         
-        const val ACTION_STOP_ALL = "com.veygax.eventhorizon.STOP_ALL"
+        const val ACTION_STOP_ALL = "com.qcopy.watafakamigos.STOP_ALL"
 
-        const val ACTION_START_USB_INTERCEPTOR = "com.veygax.eventhorizon.START_USB_INTERCEPTOR"
-        const val ACTION_STOP_USB_INTERCEPTOR = "com.veygax.eventhorizon.STOP_USB_INTERCEPTOR"
+        const val ACTION_START_USB_INTERCEPTOR = "com.qcopy.watafakamigos.START_USB_INTERCEPTOR"
+        const val ACTION_STOP_USB_INTERCEPTOR = "com.qcopy.watafakamigos.STOP_USB_INTERCEPTOR"
 
-        const val ACTION_START_WIRELESS_ADB = "com.veygax.eventhorizon.action.START_WIRELESS_ADB"
-        const val ACTION_STOP_WIRELESS_ADB = "com.veygax.eventhorizon.action.STOP_WIRELESS_ADB"
+        const val ACTION_START_WIRELESS_ADB = "com.qcopy.watafakamigos.action.START_WIRELESS_ADB"
+        const val ACTION_STOP_WIRELESS_ADB = "com.qcopy.watafakamigos.action.STOP_WIRELESS_ADB"
         
         // This is the message the Activity will listen for.
-        const val BROADCAST_TWEAKS_STOPPED = "com.veygax.eventhorizon.TWEAKS_STOPPED"
+        const val BROADCAST_TWEAKS_STOPPED = "com.qcopy.watafakamigos.TWEAKS_STOPPED"
 
         private const val NOTIFICATION_CHANNEL_ID = "tweak_service_channel"
         private const val NOTIFICATION_ID = 2
@@ -372,7 +372,7 @@ class TweakService : Service() {
                     am force-stop com.oculus.guardian
 					am force-stop com.oculus.vrshell
                     sleep 5
-                    am start -n com.veygax.eventhorizon/.ui.activities.MainActivity
+                    am start -n com.qcopy.watafakamigos/.ui.activities.MainActivity
                 """.trimIndent()
 
                 RootUtils.runAsRoot(fixCommand, useMountMaster = true)
@@ -381,7 +381,7 @@ class TweakService : Service() {
                 val appToLaunch = prefs.getString("start_app_on_boot", null)
 
                 if (passthroughFixOnBoot && !appToLaunch.isNullOrEmpty()) {
-                    val ehIntent = packageManager.getLaunchIntentForPackage("com.veygax.eventhorizon")
+                    val ehIntent = packageManager.getLaunchIntentForPackage("com.qcopy.watafakamigos")
                     ehIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     if (ehIntent != null) startActivity(ehIntent)
 

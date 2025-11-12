@@ -1,8 +1,8 @@
-package com.veygax.eventhorizon.core
+package com.qcopy.watafakamigos.core
 
 import android.content.Context
 import android.net.Uri
-import com.veygax.eventhorizon.utils.RootUtils
+import com.qcopy.watafakamigos.utils.RootUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject

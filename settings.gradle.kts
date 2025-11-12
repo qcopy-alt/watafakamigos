@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "eventhorizon"
+rootProject.name = "watafakamigos"
 include(":app")

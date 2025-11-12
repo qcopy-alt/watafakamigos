@@ -1,4 +1,4 @@
-package com.veygax.eventhorizon.ui.activities
+package com.qcopy.watafakamigos.ui.activities
 
 import android.app.Activity
 import android.os.Build
@@ -24,7 +24,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.veygax.eventhorizon.utils.RootUtils
+import com.qcopy.watafakamigos.utils.RootUtils
 import kotlinx.coroutines.launch
 
 class TerminalActivity : ComponentActivity() {

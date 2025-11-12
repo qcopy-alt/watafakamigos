@@ -1,4 +1,4 @@
-package com.veygax.eventhorizon.ui.activities
+package com.qcopy.watafakamigos.ui.activities
 
 import android.app.Activity
 import android.content.Context
@@ -23,8 +23,8 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.veygax.eventhorizon.system.TweakService
-import com.veygax.eventhorizon.utils.RootUtils
+import com.qcopy.watafakamigos.system.TweakService
+import com.qcopy.watafakamigos.utils.RootUtils
 import kotlinx.coroutines.launch
 import java.io.File
 

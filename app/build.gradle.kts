@@ -17,6 +17,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // ЭТОТ остается внутри defaultConfig
         externalNativeBuild {
             cmake {
                 cppFlags("-static")
@@ -25,6 +26,7 @@ android {
         }
     }
 
+    // А ЭТОТ выносим СЮДА, за пределы defaultConfig
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -54,20 +56,6 @@ android {
     }
 }
 
-tasks.register("copyWrapper") {
-    doLast {
-        copy {
-            from("build/intermediates/cmake/debug/obj/arm64-v8a/wrapper")
-            into("src/main/assets/")
-            fileMode = 0b111101101 // 0755
-        }
-    }
-}
-
-tasks.preBuild {
-    dependsOn("copyWrapper")
-}
-
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -91,4 +79,83 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     implementation("com.scottyab:rootbeer-lib:0.1.1")
+}
+
+// === TASKS ВНЕ dependencies ===
+tasks.register("copyWrapper") {
+    doLast {
+        copy {
+            from("build/intermediates/cmake/debug/obj/arm64-v8a/wrapper")
+            into("src/main/assets/exploit/")
+            fileMode = 0b111101101 // 0755
+        }
+    }
+}
+
+tasks.preBuild {
+    dependsOn("copyWrapper")
+}
+
+val buildWrapper = tasks.register("buildWrapper") {
+    group = "build"
+    description = "compile wrapper using cmake"
+
+    doLast {
+        val cmakeDir = "${android.sdkDirectory}/cmake/3.22.1/bin"
+        val cmakeExe = file("$cmakeDir/cmake.exe")
+        val ninjaExe = file("$cmakeDir/ninja.exe")
+
+        val buildDir = file("$buildDir/cmake-wrapper")
+        val srcDir = file("src/main/cpp")
+        val outDir = file("src/main/assets/exploit")
+
+        buildDir.deleteRecursively()
+
+        buildDir.mkdirs()
+        outDir.mkdirs()
+
+        if (!cmakeExe.exists()) error("CMake doesnt found: ${cmakeExe.absolutePath}")
+        if (!ninjaExe.exists()) error("Ninja doesnt found: ${ninjaExe.absolutePath}")
+        if (!srcDir.exists()) error("source doesnt found: ${srcDir.absolutePath}")
+
+        println("🔧 compile wrapper...")
+        println("📁 Build dir: ${buildDir.absolutePath}")
+
+        exec {
+            commandLine(
+                cmakeExe.absolutePath,
+                "-S", srcDir.absolutePath,
+                "-B", buildDir.absolutePath,
+                "-G", "Ninja",
+                "-DANDROID_ABI=arm64-v8a",
+                "-DANDROID_PLATFORM=android-24",
+                "-DANDROID_STL=c++_static",
+                "-DCMAKE_TOOLCHAIN_FILE=${android.sdkDirectory}/ndk/27.0.12077973/build/cmake/android.toolchain.cmake",
+                "-DCMAKE_MAKE_PROGRAM=${ninjaExe.absolutePath}",
+                "-DCMAKE_BUILD_TYPE=Release"
+            )
+        }
+
+        exec {
+            commandLine(
+                cmakeExe.absolutePath,
+                "--build", buildDir.absolutePath,
+                "--config", "Release",
+                "--target", "wrapper"
+            )
+        }
+
+        val binary = file("${buildDir}/wrapper")
+        if (!binary.exists()) {
+            throw GradleException("wrapper doesnt found: ${binary.absolutePath}")
+        }
+        binary.copyTo(file("${outDir}/wrapper"), overwrite = true)
+        file("${outDir}/wrapper").setExecutable(true, false)
+        println("✅ wrapper compiled and moved to assets")
+    }
+}
+
+afterEvaluate {
+    tasks.findByName("mergeDebugAssets")?.let { it.dependsOn(buildWrapper) }
+    tasks.findByName("mergeReleaseAssets")?.let { it.dependsOn(buildWrapper) }
 }

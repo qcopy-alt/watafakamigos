@@ -1,4 +1,4 @@
-package com.veygax.eventhorizon.system
+package com.qcopy.watafakamigos.system
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -10,7 +10,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.veygax.eventhorizon.R
+import com.qcopy.watafakamigos.R
 
 class DnsBlockerService : VpnService() {
 
@@ -20,8 +20,8 @@ class DnsBlockerService : VpnService() {
 
     companion object {
         private const val TAG = "KillSwitchVpnService"
-        const val ACTION_START = "com.veygax.eventhorizon.START_KILL_SWITCH"
-        const val ACTION_STOP = "com.veygax.eventhorizon.STOP_KILL_SWITCH"
+        const val ACTION_START = "com.qcopy.watafakamigos.START_KILL_SWITCH"
+        const val ACTION_STOP = "com.qcopy.watafakamigos.STOP_KILL_SWITCH"
         private const val NOTIFICATION_CHANNEL_ID = "kill_switch_channel"
         private const val NOTIFICATION_ID = 4
     }

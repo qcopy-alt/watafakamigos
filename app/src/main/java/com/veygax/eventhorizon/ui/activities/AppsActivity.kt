@@ -1,4 +1,4 @@
-package com.veygax.eventhorizon.ui.activities
+package com.qcopy.watafakamigos.ui.activities
 
 import android.app.Activity
 import android.content.Context
@@ -29,8 +29,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.veygax.eventhorizon.core.AppInstaller
-import com.veygax.eventhorizon.utils.RootUtils
+import com.qcopy.watafakamigos.core.AppInstaller
+import com.qcopy.watafakamigos.utils.RootUtils
 import kotlinx.coroutines.launch
 import android.util.Log
 import android.graphics.drawable.Drawable
@@ -105,7 +105,7 @@ fun AppsScreen() {
         AppInfo(
             title = "Install APK",
             description = "Use the Android file manager to select and install an APK file from your device",
-            packageName = "com.veygax.eventhorizon.localapkinstaller",
+            packageName = "com.qcopy.watafakamigos.localapkinstaller",
             type = AppInstallType.FILE_PICKER,
             installAction = localApkInstallAction
         ),

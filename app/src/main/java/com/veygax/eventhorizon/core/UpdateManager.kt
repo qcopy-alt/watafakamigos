@@ -1,4 +1,4 @@
-package com.veygax.eventhorizon.core
+package com.qcopy.watafakamigos.core
 
 import android.content.Context
 import android.content.Intent
@@ -6,7 +6,7 @@ import android.net.Uri
 import android.util.Log
 import android.os.Environment
 import androidx.core.content.FileProvider
-import com.veygax.eventhorizon.utils.RootUtils
+import com.qcopy.watafakamigos.utils.RootUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject

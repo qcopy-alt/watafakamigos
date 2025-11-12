@@ -1,4 +1,4 @@
-package com.veygax.eventhorizon.ui.activities
+package com.qcopy.watafakamigos.ui.activities
 
 import android.app.Activity
 import android.content.Context
@@ -37,9 +37,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
-import com.veygax.eventhorizon.core.UpdateManager
-import com.veygax.eventhorizon.system.DnsBlockerService
-import com.veygax.eventhorizon.utils.RootUtils
+import com.qcopy.watafakamigos.core.UpdateManager
+import com.qcopy.watafakamigos.system.DnsBlockerService
+import com.qcopy.watafakamigos.utils.RootUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.asFlow
@@ -125,6 +125,57 @@ class MainActivity : ComponentActivity() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
+//    fun executeExploit(
+//        context: Context,
+//        onOutput: (String) -> Unit,
+//        onProcessComplete: () -> Unit
+//    ) {
+//        lifecycleScope.launch(Dispatchers.IO) {
+//            try {
+//                val assetManager = assets
+//                val extractedDir = getDir("exploit", 0)
+//
+//                for (filename in assetManager.list("exploit")!!) {
+//                    val targetFile = File(extractedDir, filename)
+//                    assetManager.open("exploit/$filename").use { inputStream ->
+//                        Files.copy(
+//                            inputStream,
+//                            targetFile.toPath(),
+//                            StandardCopyOption.REPLACE_EXISTING
+//                        )
+//                        targetFile.setExecutable(true)
+//                    }
+//                }
+//
+//                val executablePath = applicationInfo.nativeLibraryDir + "/libexploit.so"
+//                val launchShPath = File(extractedDir, "launch.sh").path
+//                val processBuilder = ProcessBuilder()
+//                    .command(executablePath, "sh", launchShPath)
+//                    .redirectErrorStream(true)
+//                val process = processBuilder.start()
+//
+//                launch {
+//                    process.inputStream.toLineFlow()
+//                        .collect { line ->
+//                            launch(Dispatchers.Main) {
+//                                onOutput(line)
+//                            }
+//                        }
+//                }
+//
+//                process.waitFor()
+//
+//            } catch (e: Exception) {
+//                launch(Dispatchers.Main) {
+//                    onOutput("Error: ${e.message}")
+//                }
+//            } finally {
+//                launch(Dispatchers.Main) {
+//                    onProcessComplete()
+//                }
+//            }
+//        }
+//    }
     fun executeExploit(
         context: Context,
         onOutput: (String) -> Unit,
@@ -148,10 +199,21 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val executablePath = applicationInfo.nativeLibraryDir + "/libexploit.so"
+                val wrapperPath = File(extractedDir, "wrapper").path
                 val launchShPath = File(extractedDir, "launch.sh").path
+
+                if (!File(wrapperPath).exists()) {
+                    launch(Dispatchers.Main) {
+                        onOutput("FATAL: wrapper not found in assets! Compile native module.")
+                    }
+                    return@launch
+                }
+
                 val processBuilder = ProcessBuilder()
-                    .command(executablePath, "sh", launchShPath)
+                    .command(executablePath, wrapperPath, launchShPath)
+                    .directory(extractedDir)
                     .redirectErrorStream(true)
+
                 val process = processBuilder.start()
 
                 launch {
@@ -163,11 +225,15 @@ class MainActivity : ComponentActivity() {
                         }
                 }
 
-                process.waitFor()
+                val exitCode = process.waitFor()
+                launch(Dispatchers.Main) {
+                    onOutput("Exit code: $exitCode")
+                }
 
             } catch (e: Exception) {
+                e.printStackTrace()
                 launch(Dispatchers.Main) {
-                    onOutput("Error: ${e.message}")
+                    onOutput("ERROR: ${e.message}")
                 }
             } finally {
                 launch(Dispatchers.Main) {
@@ -176,7 +242,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
     private fun InputStream.toLineFlow() = bufferedReader(StandardCharsets.UTF_8)
         .lineSequence()
         .asFlow()
