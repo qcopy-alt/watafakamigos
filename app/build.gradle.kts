@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "com.veygax.eventhorizon"
+    namespace = "com.qcopy.watafakamigos"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.veygax.eventhorizon"
+        applicationId = "com.qcopy.watafakamigos"
         minSdk = 24
         targetSdk = 36
         versionCode = 10
-        versionName = "2.3.4.5"
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
