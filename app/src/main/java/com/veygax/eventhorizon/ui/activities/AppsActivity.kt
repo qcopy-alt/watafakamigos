@@ -109,14 +109,14 @@ fun AppsScreen() {
             type = AppInstallType.FILE_PICKER,
             installAction = localApkInstallAction
         ),
-        AppInfo(
-            title = "Dock Editor",
-            description = "A simple tool for the Quest 3/3s that allows you to edit the pinned applications on the dock",
-            packageName = "com.lumi.dockeditor",
-            installAction = { ctx, onStatus, _ ->
-                AppInstaller.downloadAndInstall(ctx, "Lumince", "DockEditor", onStatus)
-            }
-        ),
+//        AppInfo(
+//            title = "Dock Editor",
+//            description = "A simple tool for the Quest 3/3s that allows you to edit the pinned applications on the dock",
+//            packageName = "com.lumi.dockeditor",
+//            installAction = { ctx, onStatus, _ ->
+//                AppInstaller.downloadAndInstall(ctx, "Lumince", "DockEditor", onStatus)
+//            }
+//        ),
         AppInfo(
             title = "Shizuku",
             description = "Lets other apps use system-level features by giving them elevated permissions",
@@ -164,39 +164,39 @@ fun AppsScreen() {
         selectedAppToInstall = null
     }
 
-    // State for Dogfood Hub feature
-    var showRestartDialog by remember { mutableStateOf(false) }
-    var restartDialogContent by remember { mutableStateOf<Pair<String, () -> Unit>>(Pair("", {})) }
-    var isDogfoodEnabled by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        // Check Dogfood Hub status
-        val buildType = RootUtils.runAsRoot("getprop ro.build.type")
-        isDogfoodEnabled = buildType.trim() == "userdebug"
-
-        // Check for Dogfood Hub setup step 2
-        if (sharedPrefs.getBoolean("dogfood_pending_step2", false)) {
-            sharedPrefs.edit().remove("dogfood_pending_step2").apply()
-            RootUtils.runAsRoot(LaunchCommands.ENABLE_DOGFOOD_STEP_2)
-        }
-    }
-
-    if (showRestartDialog) {
-        AlertDialog(
-            onDismissRequest = { showRestartDialog = false },
-            title = { Text("Restart Required") },
-            text = { Text(restartDialogContent.first) },
-            confirmButton = { Button(onClick = { restartDialogContent.second(); showRestartDialog = false }) { Text("Confirm") } },
-            dismissButton = { Button(onClick = { showRestartDialog = false }) { Text("Cancel") } }
-        )
-    }
-
-    if (showSideloadedAppDialog) {
-        LaunchStartAppOnBootDialog(
-            onDismiss = { showSideloadedAppDialog = false },
-            onAppSelected = saveAppToLaunchOnBoot
-        )
-    }
+//    // State for Dogfood Hub feature
+//    var showRestartDialog by remember { mutableStateOf(false) }
+//    var restartDialogContent by remember { mutableStateOf<Pair<String, () -> Unit>>(Pair("", {})) }
+//    var isDogfoodEnabled by rememberSaveable { mutableStateOf(false) }
+//
+//    LaunchedEffect(Unit) {
+//        // Check Dogfood Hub status
+//        val buildType = RootUtils.runAsRoot("getprop ro.build.type")
+//        isDogfoodEnabled = buildType.trim() == "userdebug"
+//
+//        // Check for Dogfood Hub setup step 2
+//        if (sharedPrefs.getBoolean("dogfood_pending_step2", false)) {
+//            sharedPrefs.edit().remove("dogfood_pending_step2").apply()
+//            RootUtils.runAsRoot(LaunchCommands.ENABLE_DOGFOOD_STEP_2)
+//        }
+//    }
+//
+//    if (showRestartDialog) {
+//        AlertDialog(
+//            onDismissRequest = { showRestartDialog = false },
+//            title = { Text("Restart Required") },
+//            text = { Text(restartDialogContent.first) },
+//            confirmButton = { Button(onClick = { restartDialogContent.second(); showRestartDialog = false }) { Text("Confirm") } },
+//            dismissButton = { Button(onClick = { showRestartDialog = false }) { Text("Cancel") } }
+//        )
+//    }
+//
+//    if (showSideloadedAppDialog) {
+//        LaunchStartAppOnBootDialog(
+//            onDismiss = { showSideloadedAppDialog = false },
+//            onAppSelected = saveAppToLaunchOnBoot
+//        )
+//    }
 
     Scaffold(
         topBar = {
@@ -259,32 +259,32 @@ fun AppsScreen() {
                 ) {
                     when (page) {
                         0 -> {
-                            item {
-                                AppCard("Dogfood Hub", "Enables the hidden Dogfood Hub for experimental features") {
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Switch(checked = isDogfoodEnabled, onCheckedChange = { isEnabled ->
-                                            restartDialogContent = if (isEnabled) {
-                                                Pair("This will restart your device's interface. After it reloads, please open this app again to complete the second step automatically.") {
-                                                    coroutineScope.launch {
-                                                        sharedPrefs.edit().putBoolean("dogfood_pending_step2", true).apply()
-                                                        RootUtils.runAsRoot(LaunchCommands.ENABLE_DOGFOOD_STEP_1)
-                                                    }
-                                                }
-                                            } else {
-                                                Pair("This will disable the Dogfood Hub and restart your device's interface") {
-                                                    coroutineScope.launch { RootUtils.runAsRoot(LaunchCommands.DISABLE_DOGFOOD_HUB) }
-                                                }
-                                            }
-                                            showRestartDialog = true
-                                        })
-                                        Spacer(Modifier.height(8.dp))
-                                        Button(
-                                            onClick = { coroutineScope.launch { RootUtils.runAsRoot(LaunchCommands.LAUNCH_DOGFOOD_HUB) } },
-                                            enabled = isDogfoodEnabled
-                                        ) { Text("Launch") }
-                                    }
-                                }
-                            }
+//                            item {
+//                                AppCard("Dogfood Hub", "Enables the hidden Dogfood Hub for experimental features") {
+//                                    Column(horizontalAlignment = Alignment.End) {
+//                                        Switch(checked = isDogfoodEnabled, onCheckedChange = { isEnabled ->
+//                                            restartDialogContent = if (isEnabled) {
+//                                                Pair("This will restart your device's interface. After it reloads, please open this app again to complete the second step automatically.") {
+//                                                    coroutineScope.launch {
+//                                                        sharedPrefs.edit().putBoolean("dogfood_pending_step2", true).apply()
+//                                                        RootUtils.runAsRoot(LaunchCommands.ENABLE_DOGFOOD_STEP_1)
+//                                                    }
+//                                                }
+//                                            } else {
+//                                                Pair("This will disable the Dogfood Hub and restart your device's interface") {
+//                                                    coroutineScope.launch { RootUtils.runAsRoot(LaunchCommands.DISABLE_DOGFOOD_HUB) }
+//                                                }
+//                                            }
+//                                            showRestartDialog = true
+//                                        })
+//                                        Spacer(Modifier.height(8.dp))
+//                                        Button(
+//                                            onClick = { coroutineScope.launch { RootUtils.runAsRoot(LaunchCommands.LAUNCH_DOGFOOD_HUB) } },
+//                                            enabled = isDogfoodEnabled
+//                                        ) { Text("Launch") }
+//                                    }
+//                                }
+//                            }
                             item {
                                 AppCard("Android Settings", "Launches the Android settings app") {
                                     Button(onClick = {
