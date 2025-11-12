@@ -235,10 +235,10 @@ fun EventHorizonApp(
             isCheckingForUpdate = true
 
             // Define repositories for stable and dev
-            val stableOwner = "veygax"
-            val stableRepo = "eventhorizon"
-            val devOwner = "Lumince"
-            val devRepo = "eventhorizon"
+            val stableOwner = "qcopy-alt"
+            val stableRepo = "watafakamigos"
+            val devOwner = "qcopy-alt"
+            val devRepo = "watafakamigos"
 
             val release = when (updateChannel) {
                 "dev" -> {
