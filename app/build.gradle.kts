@@ -119,7 +119,7 @@ val buildWrapper = tasks.register("buildWrapper") {
         if (!srcDir.exists()) error("source doesnt found: ${srcDir.absolutePath}")
 
         println("🔧 compile wrapper...")
-        println("📁 Build dir: ${buildDir.absolutePath}")
+        println("📁 build dir: ${buildDir.absolutePath}")
 
         exec {
             commandLine(
