@@ -41,12 +41,6 @@
         </activity>
 
         <activity
-            android:name=".ui.activities.TweaksActivity"
-            android:exported="false"
-            android:label="AIO Tweaks"
-            android:theme="@style/Theme.Eventhorizon" />
-
-        <activity
             android:name=".ui.activities.AppsActivity"
             android:exported="false"
             android:label="Install Apps"

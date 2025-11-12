@@ -111,9 +111,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun lastVersionForDevice(): Long = when(Build.BOARD) {
-        "eureka" -> 51154110129000520L
-        "panther" -> 1176880099000610L
-        else -> 0
+            "eureka" -> 51154110129000520L
+            "panther" -> 1176880099000610L
+            else -> 0
     }
 
     fun getVersionIncremental() = Build.VERSION.INCREMENTAL.toLong()
@@ -121,7 +121,7 @@ class MainActivity : ComponentActivity() {
     fun getDeviceName(): String = Build.PRODUCT
 
     fun isSupportedDevice(): Boolean {
-        return getDeviceName() == "eureka" || getDeviceName() == "panther"
+        return true
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -307,7 +307,7 @@ fun EventHorizonApp(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "eventhorizon",
+                text = "watafakamigos",
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -334,7 +334,7 @@ fun EventHorizonApp(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "root for the meta surveillance device by veygax, zhuowei and freexr",
+            text = "root4all. mod by @a62family (tg). thanks for: veygax, zhuowei, freexr.",
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Left,
@@ -462,16 +462,16 @@ fun EventHorizonApp(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
-                    onClick = {
-                        val intent = Intent(context, TweaksActivity::class.java)
-                        intent.putExtra("is_rooted", true)
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("AIO Tweaks")
-                }
+//                Button(
+//                    onClick = {
+//                        val intent = Intent(context, TweaksActivity::class.java)
+//                        intent.putExtra("is_rooted", true)
+//                        context.startActivity(intent)
+//                    },
+//                    modifier = Modifier.weight(1f)
+//                ) {
+//                    Text("AIO Tweaks")
+//                }
                 Button(
                     onClick = {
                         val intent = Intent(context, AppsActivity::class.java)
@@ -492,16 +492,16 @@ fun EventHorizonApp(
                 }
             }
         } else {
-            Button(
-                onClick = {
-                    val intent = Intent(context, TweaksActivity::class.java)
-                    intent.putExtra("is_rooted", false)
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("AIO Tweaks")
-            }
+//            Button(
+//                onClick = {
+//                    val intent = Intent(context, TweaksActivity::class.java)
+//                    intent.putExtra("is_rooted", false)
+//                    context.startActivity(intent)
+//                },
+//                modifier = Modifier.fillMaxWidth()
+//            ) {
+//                Text("AIO Tweaks")
+//            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
