@@ -55,7 +55,7 @@ fun LedColorScreen() {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val activity = context as? Activity
-    val sharedPrefs = remember { context.getSharedPreferences("eventhorizon_prefs", Context.MODE_PRIVATE) }
+    val sharedPrefs = remember { context.getSharedPreferences("watafakamigos_prefs", Context.MODE_PRIVATE) }
 
     var red by remember { mutableStateOf(sharedPrefs.getInt("led_red", 255).toFloat()) }
     var green by remember { mutableStateOf(sharedPrefs.getInt("led_green", 255).toFloat()) }

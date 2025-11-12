@@ -16,7 +16,7 @@ class DnsBlockerService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
 
-    private val sharedPrefs by lazy { getSharedPreferences("eventhorizon_prefs", Context.MODE_PRIVATE) }
+    private val sharedPrefs by lazy { getSharedPreferences("watafakamigos_prefs", Context.MODE_PRIVATE) }
 
     companion object {
         private const val TAG = "KillSwitchVpnService"
@@ -83,7 +83,7 @@ class DnsBlockerService : VpnService() {
     private fun buildNotification(): Notification {
         createNotificationChannel()
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("EventHorizon Kill Switch")
+            .setContentTitle("watafakamigos Kill Switch")
             .setContentText("Internet access is temporarily blocked.")
             .setSmallIcon(R.drawable.ic_launcher_foreground) // Use a suitable icon
             .setPriority(NotificationCompat.PRIORITY_LOW)

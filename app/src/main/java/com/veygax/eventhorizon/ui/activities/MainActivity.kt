@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
 
             MaterialTheme(colorScheme = colorScheme) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    EventHorizonApp(
+                    watafakamigosApp(
                         autoRootOnStart = intent?.getBooleanExtra("auto_root", false) ?: false,
                         autoStartDnsBlocker = intent?.getBooleanExtra("start_dns_blocker", false) ?: false,
                         onRequestVpnPermission = { requestVpnPermission() },
@@ -251,14 +251,14 @@ class MainActivity : ComponentActivity() {
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventHorizonApp(
+fun watafakamigosApp(
     autoRootOnStart: Boolean,
     autoStartDnsBlocker: Boolean,
     onRequestVpnPermission: () -> Unit,
     intent: Intent?
 ) {
     val context = LocalContext.current
-    val sharedPrefs = remember { context.getSharedPreferences("eventhorizon_prefs", Context.MODE_PRIVATE) }
+    val sharedPrefs = remember { context.getSharedPreferences("watafakamigos_prefs", Context.MODE_PRIVATE) }
     val coroutineScope = rememberCoroutineScope()
 
     var rootOnBoot by remember { mutableStateOf(sharedPrefs.getBoolean("root_on_boot", false)) }
@@ -669,7 +669,7 @@ fun UpdateDialog(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!isDownloading) {
                     Text(
-                        "A new version of eventhorizon is available. Would you like to update?",
+                        "A new version of watafakamigos is available. Would you like to update?",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(16.dp))

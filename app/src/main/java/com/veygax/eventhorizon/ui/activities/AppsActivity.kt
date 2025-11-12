@@ -82,7 +82,7 @@ fun AppsScreen() {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val activity = context as? Activity
-    val sharedPrefs = remember { context.getSharedPreferences("eventhorizon_prefs", Context.MODE_PRIVATE) }
+    val sharedPrefs = remember { context.getSharedPreferences("watafakamigos_prefs", Context.MODE_PRIVATE) }
     var selectedAppToInstall: AppInfo? by remember { mutableStateOf(null) }
     var showSideloadedAppDialog by remember { mutableStateOf(false) }
     var appToLaunchOnBoot by rememberSaveable {

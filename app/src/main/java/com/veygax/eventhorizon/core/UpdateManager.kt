@@ -181,7 +181,7 @@ object UpdateManager {
 					} else {
 					    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
 					    if (!downloadsDir.exists()) downloadsDir.mkdirs()
-					    val outFile = File(downloadsDir, "eventhorizon-update.apk")
+					    val outFile = File(downloadsDir, "watafakamigos-update.apk")
 
 					    if (outFile.exists()) outFile.delete()
 					    apkFile.copyTo(outFile, overwrite = true)

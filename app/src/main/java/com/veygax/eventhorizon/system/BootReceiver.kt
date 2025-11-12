@@ -20,7 +20,7 @@ import android.util.Log
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            val sharedPrefs = context.getSharedPreferences("eventhorizon_prefs", Context.MODE_PRIVATE)
+            val sharedPrefs = context.getSharedPreferences("watafakamigos_prefs", Context.MODE_PRIVATE)
             val rootOnBoot = sharedPrefs.getBoolean("root_on_boot", false)
             val blockerOnBoot = sharedPrefs.getBoolean("blocker_on_boot", false)
             val rainbowLedOnBoot = sharedPrefs.getBoolean("rgb_on_boot", false)
@@ -172,7 +172,7 @@ class BootReceiver : BroadcastReceiver() {
                     if (RootUtils.isRootAvailable()) {
                         Log.i("BootReceiver", "Root available, copying hosts file...")
 
-                        val hostsFile = File("/data/adb/eventhorizon/hosts")
+                        val hostsFile = File("/data/adb/watafakamigos/hosts")
                         if (!hostsFile.exists()) {
                             try {
                                 Log.d("BootReceiver", "Starting to copy hosts file from assets...")
@@ -182,7 +182,7 @@ class BootReceiver : BroadcastReceiver() {
                                 val tempFile = File(context.cacheDir, "hosts_temp")
                                 tempFile.writeText(hostsContent)
 
-                                val moduleDir = "/data/adb/eventhorizon"
+                                val moduleDir = "/data/adb/watafakamigos"
                                 val finalHostsPath = "$moduleDir/hosts"
                                 val commands = """
                                     mkdir -p $moduleDir
@@ -198,7 +198,7 @@ class BootReceiver : BroadcastReceiver() {
                         }
 
                         RootUtils.runAsRoot(
-                            "umount -l /system/etc/hosts; mount -o bind /data/adb/eventhorizon/hosts /system/etc/hosts",
+                            "umount -l /system/etc/hosts; mount -o bind /data/adb/watafakamigos/hosts /system/etc/hosts",
                             useMountMaster = true
                         )
                         Log.i("BootReceiver", "Hosts file mounted.")
@@ -257,7 +257,7 @@ class BootReceiver : BroadcastReceiver() {
                         }
                     }
 
-                    val moduleDir = "/data/adb/eventhorizon"
+                    val moduleDir = "/data/adb/watafakamigos"
                     val finalBinaryPath = "$moduleDir/telemetry"
                     val commands = """
                         mkdir -p $moduleDir

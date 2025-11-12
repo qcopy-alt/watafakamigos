@@ -257,7 +257,7 @@ class TweaksActivity : ComponentActivity() {
             val hostsContent = inputStream.bufferedReader().use { it.readText() }
             val tempFile = File(context.cacheDir, "hosts_temp")
             tempFile.writeText(hostsContent)
-            val moduleDir = "/data/adb/eventhorizon"
+            val moduleDir = "/data/adb/watafakamigos"
             val finalHostsPath = "$moduleDir/hosts"
             val commands = """
                 mkdir -p $moduleDir
@@ -277,7 +277,7 @@ class TweaksActivity : ComponentActivity() {
             copyHostsFileFromAssets(applicationContext)
             val commands = """
                 umount -l /system/etc/hosts
-                mount -o bind /data/adb/eventhorizon/hosts /system/etc/hosts
+                mount -o bind /data/adb/watafakamigos/hosts /system/etc/hosts
             """.trimIndent()
             RootUtils.runAsRoot(commands, useMountMaster = true)
         
@@ -319,7 +319,7 @@ class TweaksActivity : ComponentActivity() {
                 }
             }
 
-            val moduleDir = "/data/adb/eventhorizon"
+            val moduleDir = "/data/adb/watafakamigos"
             val finalBinaryPath = "$moduleDir/telemetry"
             val commands = """
                 mkdir -p $moduleDir
@@ -418,7 +418,7 @@ fun TweaksScreen(
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
-    val sharedPrefs = remember { context.getSharedPreferences("eventhorizon_prefs", Context.MODE_PRIVATE) }
+    val sharedPrefs = remember { context.getSharedPreferences("watafakamigos_prefs", Context.MODE_PRIVATE) }
     val scriptFile = remember { File(context.filesDir, "rgb_led.sh") }
 
     // Helper to get initial state from SharedPreferences (for instant UI load)
@@ -718,7 +718,7 @@ fun TweaksScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("eventhorizon AIO") },
+                title = { Text("watafakamigos AIO") },
                 navigationIcon = { IconButton(onClick = { activity.finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -1932,8 +1932,8 @@ object TweakCommands {
     // --- Anti TELEMETRY
     const val TELEMETRY_TOGGLE_KEY = "telemetry_toggle_enabled"
     const val ENABLE_TELEMETRY_DISABLE = """
-        mount -o bind /data/adb/eventhorizon/telemetry /system_ext/bin/crashtelemetry
-        mount -o bind /data/adb/eventhorizon/telemetry /system_ext/bin/telemetry
+        mount -o bind /data/adb/watafakamigos/telemetry /system_ext/bin/crashtelemetry
+        mount -o bind /data/adb/watafakamigos/telemetry /system_ext/bin/telemetry
     """
 
     const val DISABLE_TELEMETRY_DISABLE = """

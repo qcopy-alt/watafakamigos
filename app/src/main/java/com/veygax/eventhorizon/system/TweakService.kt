@@ -27,7 +27,7 @@ class TweakService : Service() {
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
     private val TAG = "TweakService"
-    private val sharedPrefs by lazy { getSharedPreferences("eventhorizon_prefs", Context.MODE_PRIVATE) }
+    private val sharedPrefs by lazy { getSharedPreferences("watafakamigos_prefs", Context.MODE_PRIVATE) }
 
     // App Interceptor constants moved from AppInterceptor.kt
     private val INTERCEPTOR_SCRIPT = """
@@ -376,7 +376,7 @@ class TweakService : Service() {
                 """.trimIndent()
 
                 RootUtils.runAsRoot(fixCommand, useMountMaster = true)
-                val prefs = getSharedPreferences("eventhorizon_prefs", Context.MODE_PRIVATE)
+                val prefs = getSharedPreferences("watafakamigos_prefs", Context.MODE_PRIVATE)
                 val passthroughFixOnBoot = prefs.getBoolean("passthrough_fix_on_boot", false)
                 val appToLaunch = prefs.getString("start_app_on_boot", null)
 
@@ -473,7 +473,7 @@ private suspend fun stopUsbInterceptor() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
-                "EventHorizon Background Tweaks",
+                "watafakamigos Background Tweaks",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Runs persistent root tweaks like LED, CPU frequency locks, and app interception."
@@ -497,7 +497,7 @@ private suspend fun stopUsbInterceptor() {
         
         // Increase Notification Persistence
         val notificationBuilder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("EventHorizon Tweaks Active")
+            .setContentTitle("watafakamigos Tweaks Active")
             .setContentText(contentText)
             .setSmallIcon(android.R.drawable.ic_lock_power_off) 
             .setPriority(NotificationCompat.PRIORITY_LOW)
