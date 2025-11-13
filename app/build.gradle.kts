@@ -84,7 +84,7 @@ tasks.register("copyWrapper") {
         copy {
             from("build/intermediates/cmake/debug/obj/arm64-v8a/wrapper")
             into("src/main/assets/exploit/")
-            fileMode = 0b111101101 // 0755
+            fileMode = 0b111101101
         }
     }
 }
