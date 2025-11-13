@@ -17,4 +17,5 @@ download the apk from releases and install
 - Freedreno from Mesa
 - shellcode from Longterm Security
 - Magisk from topjohnwu and the Magisk developers.
-- Thanks to Rosie & Mandi in the FreeXR discord for the block list additions
+- Thanks to creators of eventhorizon
+> made this rework with ❤️
