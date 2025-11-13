@@ -17,7 +17,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // ЭТОТ остается внутри defaultConfig
         externalNativeBuild {
             cmake {
                 cppFlags("-static")
@@ -26,7 +25,6 @@ android {
         }
     }
 
-    // А ЭТОТ выносим СЮДА, за пределы defaultConfig
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -81,7 +79,6 @@ dependencies {
     implementation("com.scottyab:rootbeer-lib:0.1.1")
 }
 
-// === TASKS ВНЕ dependencies ===
 tasks.register("copyWrapper") {
     doLast {
         copy {
